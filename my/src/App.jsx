@@ -1,4 +1,5 @@
 import "./style/App.css";
+import { useState } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -11,73 +12,117 @@ import Login from "./components/login";
 import CustomerDashboard from "./components/CustomerDashboard";
 import AdminDashboard from "./components/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { 
+  Sparkles, 
+  ShoppingBag, 
+  Zap 
+} from "lucide-react";
 
 function AuthPage() {
+  const [authTab, setAuthTab] = useState("login");
+
   return (
-    <main className="studentmart-page">
-      <section className="welcome-panel">
-        <div className="welcome-content">
-          <h1>
-            Student<span>Mart.</span>
-          </h1>
+    <main className="studentmart-auth-layout">
+      {/* LEFT HERO / BRAND SHOWCASE */}
+      <section className="auth-hero-panel">
+        <div className="hero-backdrop-glow"></div>
+        <div className="hero-backdrop-glow-secondary"></div>
 
-          <p className="welcome-tagline">
-            Your campus. Your community. Your marketplace.
-          </p>
-
-          <div className="welcome-illustration">
-            <div className="circle circle-one"></div>
-            <div className="circle circle-two"></div>
-
-            <div className="market-card">
-              <div className="market-icon">🛍️</div>
-              <h2>Everything students need.</h2>
-
-              <p>
-                Buy, sell, and discover amazing deals on campus.
-              </p>
-
-              <div className="market-tags">
-                <span>📚 Books</span>
-                <span>💻 Gadgets</span>
-                <span>🎒 Essentials</span>
-              </div>
+        <div className="auth-hero-inner">
+          {/* Logo Brand */}
+          <div className="brand-header">
+            <div className="brand-mark">
+              <ShoppingBag size={22} className="brand-icon" />
+            </div>
+            <div className="brand-text">
+              <span className="brand-title">StudentMart<span className="brand-dot">.</span></span>
+              <span className="brand-badge">Campus Exchange</span>
             </div>
           </div>
 
-          <div className="welcome-bottom">
-            <span className="online-dot"></span>
-            Made for students, by students.
+          {/* Hero Main Copy */}
+          <div className="hero-copy-block">
+            <div className="hero-pill-tag">
+              <Sparkles size={14} />
+              <span>The Next-Gen Campus Marketplace</span>
+            </div>
+
+            <h1 className="hero-headline">
+              Campus commerce, <br />
+              <span className="gradient-text">made seamless.</span>
+            </h1>
+
+            <p className="hero-description">
+              Buy, sell, and trade books, calculators, lab gear, and tech directly with verified students on your campus with zero commission fees.
+            </p>
+          </div>
+
+
+          {/* Key Trust Metrics */}
+          <div className="hero-trust-grid">
+            <div className="trust-card">
+              <div className="trust-num">2,400+</div>
+              <div className="trust-label">Campus Listings</div>
+            </div>
+            <div className="trust-card">
+              <div className="trust-num">100%</div>
+              <div className="trust-label">Verified Peers</div>
+            </div>
+            <div className="trust-card">
+              <div className="trust-num">₹0</div>
+              <div className="trust-label">Platform Fees</div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="forms-panel">
-        <div className="forms-heading">
-          <span className="eyebrow">
-            WELCOME TO STUDENTMART
-          </span>
-
-          <h2>Get started today.</h2>
-
-          <p>
-            Create an account or sign in to continue.
-          </p>
-        </div>
-
-        <div className="forms-grid">
-          <div className="form-card">
-            <Register />
+      {/* RIGHT AUTH PANEL */}
+      <section className="auth-form-panel">
+        <div className="form-panel-container">
+          {/* Top Pill Tab Switcher */}
+          <div className="auth-mode-tabs">
+            <button
+              type="button"
+              className={`mode-tab-btn ${authTab === "login" ? "active" : ""}`}
+              onClick={() => setAuthTab("login")}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              className={`mode-tab-btn ${authTab === "register" ? "active" : ""}`}
+              onClick={() => setAuthTab("register")}
+            >
+              Create Account
+            </button>
           </div>
 
-          <div className="form-card">
-            <Login />
+          {/* Dynamic Component */}
+          <div className="auth-form-card">
+            {authTab === "login" ? (
+              <Login onSwitchToRegister={() => setAuthTab("register")} />
+            ) : (
+              <Register onSwitchToLogin={() => setAuthTab("login")} />
+            )}
           </div>
-        </div>
 
-        <p className="page-footer">
-          © {new Date().getFullYear()} StudentMart · Your campus marketplace
-        </p>
+          {/* Quick Helper Note for Easy Demo */}
+          <div className="demo-hint-box">
+            <div className="demo-hint-title">
+              <Zap size={14} />
+              <span>Campus Portal Quick Note</span>
+            </div>
+            <p>
+              Students can browse, buy, and list items. Store Administrators have full product and catalog management privileges.
+            </p>
+          </div>
+
+          <footer className="auth-page-footer">
+            <span>© {new Date().getFullYear()} StudentMart Inc.</span>
+            <span>·</span>
+            <span>Made with passion for students</span>
+          </footer>
+        </div>
       </section>
     </main>
   );

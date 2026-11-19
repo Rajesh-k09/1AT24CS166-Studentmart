@@ -1,21 +1,72 @@
 import "../style/dashboard.css";
 import { API_BASE_URL } from "../config";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function Dashboard({ role: propRole, initialTab = "profile" }) {
+// Icons from lucide-react
+import {
+  Tag,
+  Package,
+  Clock,
+  Heart,
+  ShoppingBag,
+  Sparkles,
+  BookOpen,
+  Laptop,
+  FileText,
+  Armchair,
+  Shirt,
+  Trophy,
+  HelpCircle,
+  ArrowRight,
+  TrendingUp,
+  MapPin,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  PlusCircle,
+  Search,
+  Filter,
+  Trash2,
+  Edit2,
+  SlidersHorizontal,
+  Lock,
+  User as UserIcon,
+  Bell,
+  Mail,
+  ShieldCheck,
+  ChevronRight
+} from "lucide-react";
+
+// Sub-components
+import Sidebar from "./Sidebar";
+import Navbar from "./Navbar";
+import StatCard from "./StatCard";
+import CategoryCard from "./CategoryCard";
+import ProductCard from "./ProductCard";
+import ProductDetailModal from "./ProductDetailModal";
+import SellModal from "./SellModal";
+import EmptyState from "./EmptyState";
+import ChatMessages from "./ChatMessages";
+
+export default function Dashboard({ role: propRole, initialTab = "dashboard" }) {
   const navigate = useNavigate();
 
+  // Navigation & layout state
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isSellModalOpen, setIsSellModalOpen] = useState(false);
+  const [selectedProductForDetail, setSelectedProductForDetail] = useState(null);
+
+  // User & Auth State
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Modals state
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  // Edit profile & password modal states
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
-
-  // Form states
   const [editForm, setEditForm] = useState({
     name: "",
     email: "",
@@ -24,72 +75,120 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
     year: "",
     address: "",
   });
-
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
   });
 
-  const [alertMessage, setAlertMessage] = useState({ type: "", text: "" });
+  // Toast alert notification state
+  const [toastMessage, setToastMessage] = useState(null);
+  const showToast = (type, text) => {
+    setToastMessage({ type, text });
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4000);
+  };
 
-  // Search, Category, Price Filter States
+  // Search & Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [priceSort, setPriceSort] = useState("default");
 
-  // Fallback default products
-  const defaultProducts = [
+  // Initial Seed / Fallback catalog
+  const defaultProducts = useMemo(() => [
     {
-      id: "1",
-      title: "Engineering Mathematics Textbook",
-      price: 450,
-      category: "Books",
-      desc: "VTU 3rd & 4th sem mathematics textbook in mint condition with solved papers.",
-      image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80",
-    },
-    {
-      id: "2",
-      title: "Scientific Calculator FX-991EX",
-      price: 850,
-      category: "Gadgets",
-      desc: "Casio Classwiz calculator with solar battery, accepted in all semester exams.",
+      id: "prod-1",
+      _id: "prod-1",
+      title: "Casio FX-991CW Scientific Calculator",
+      name: "Casio FX-991CW Scientific Calculator",
+      price: 1250,
+      category: "Electronics",
+      condition: "Like New",
+      desc: "Advanced engineering calculator with solar + dual battery backup. Approved for university exams.",
       image: "https://images.unsplash.com/photo-1594980596870-8aa52a78d8cd?w=600&auto=format&fit=crop&q=80",
+      location: "Central Library Counter",
+      sellerName: "Prajwal M.",
+      featured: true,
+      soldCount: 14,
     },
     {
-      id: "3",
-      title: "Campus College Backpack",
-      price: 650,
-      category: "College Bags",
-      desc: "Durable water-resistant college bag with 3 compartments & padded laptop sleeve.",
+      id: "prod-2",
+      _id: "prod-2",
+      title: "Campus Waterproof Laptop Backpack",
+      name: "Campus Waterproof Laptop Backpack",
+      price: 899,
+      category: "Accessories",
+      condition: "Brand New",
+      desc: "Durable 25L backpack with 15.6 inch padded laptop sleeve, USB charging port, and water bottle holder.",
       image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&auto=format&fit=crop&q=80",
+      location: "Hostel Block B",
+      sellerName: "Sneha P.",
+      featured: true,
+      soldCount: 9,
     },
     {
-      id: "4",
-      title: "Lab Coat & Safety Apron (Size M)",
-      price: 299,
-      category: "Uniform",
-      desc: "100% white cotton lab apron suitable for Chemistry and Physics lab experiments.",
-      image: "https://images.unsplash.com/photo-1584467735871-8e85353a8413?w=600&auto=format&fit=crop&q=80",
-    },
-    {
-      id: "5",
-      title: "Engineering Drawing Kit & Drafter",
-      price: 550,
-      category: "Stationery",
-      desc: "Mini drafter with scale, clamps, sheet holder, and protective carrying case.",
+      id: "prod-3",
+      _id: "prod-3",
+      title: "Engineering Drawing & Drafting Kit",
+      name: "Engineering Drawing & Drafting Kit",
+      price: 450,
+      category: "Notes",
+      condition: "Gently Used",
+      desc: "Complete mini-drafter, compass set, set squares, and scale sheet clips in hardcover travel case.",
       image: "https://images.unsplash.com/photo-1581291518857-4e27b48ff24e?w=600&auto=format&fit=crop&q=80",
+      location: "Mechanical Dept Block",
+      sellerName: "Rahul S.",
+      featured: true,
+      soldCount: 22,
     },
     {
-      id: "6",
-      title: "Wireless Study Earbuds",
-      price: 1199,
-      category: "Gadgets",
-      desc: "Noise-isolating bluetooth earbuds with 20hr battery for study and library sessions.",
-      image: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=600&auto=format&fit=crop&q=80",
+      id: "prod-4",
+      _id: "prod-4",
+      title: "VTU Higher Engineering Mathematics (Sem 3 & 4)",
+      name: "VTU Higher Engineering Mathematics (Sem 3 & 4)",
+      price: 499,
+      category: "Books",
+      condition: "Like New",
+      desc: "Latest edition with step-by-step solved question papers and clear notes. Zero markings.",
+      image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80",
+      location: "Library Reading Room",
+      sellerName: "Ananya K.",
+      featured: false,
+      soldCount: 7,
     },
-  ];
+    {
+      id: "prod-5",
+      _id: "prod-5",
+      title: "Ergonomic Mesh Study Desk Chair",
+      name: "Ergonomic Mesh Study Desk Chair",
+      price: 1850,
+      category: "Furniture",
+      condition: "Gently Used",
+      desc: "Adjustable height with breathable lumbar support mesh back. Perfect for long study marathons.",
+      image: "https://images.unsplash.com/photo-1580481077195-c3a8210ae938?w=600&auto=format&fit=crop&q=80",
+      location: "Dorm Campus Wing 2",
+      sellerName: "Vikram R.",
+      featured: false,
+      soldCount: 3,
+    },
+    {
+      id: "prod-6",
+      _id: "prod-6",
+      title: "Yonex Badminton Racket with Thermal Cover",
+      name: "Yonex Badminton Racket with Thermal Cover",
+      price: 950,
+      category: "Sports",
+      condition: "Like New",
+      desc: "Graphite isometric frame with high-tension strings. Used only for college tournament practice.",
+      image: "https://images.unsplash.com/photo-1613918108466-292b78a8ef95?w=600&auto=format&fit=crop&q=80",
+      location: "Indoor Sports Complex",
+      sellerName: "Rohan D.",
+      featured: false,
+      soldCount: 5,
+    },
+  ], []);
 
-  // Persistent products & cart
+  // Persistent products
   const [products, setProducts] = useState(() => {
     try {
       const saved = localStorage.getItem("studentmartProducts");
@@ -99,6 +198,7 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
     }
   });
 
+  // Persistent Shopping Cart
   const [cart, setCart] = useState(() => {
     try {
       const saved = localStorage.getItem("studentmartCart");
@@ -108,23 +208,71 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
     }
   });
 
-  // Orders state
+  // Persistent Wishlist
+  const [wishlist, setWishlist] = useState(() => {
+    try {
+      const saved = localStorage.getItem("studentmartWishlist");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Persistent User's Own Listings
+  const [myListings, setMyListings] = useState(() => {
+    try {
+      const saved = localStorage.getItem("studentmartMyListings");
+      return saved ? JSON.parse(saved) : [
+        {
+          id: "listing-1",
+          title: "Engineering Mathematics Textbook (3rd Sem)",
+          price: 450,
+          category: "Books",
+          condition: "Like New",
+          status: "Active",
+          views: 38,
+          createdAt: "2 days ago",
+          image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80",
+        },
+      ];
+    } catch {
+      return [];
+    }
+  });
+
+  // Customer Orders State
   const [customerOrders, setCustomerOrders] = useState([]);
-  const [customerOrdersLoading, setCustomerOrdersLoading] = useState(false);
+  const [ordersLoading, setOrdersLoading] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [deliveryLocation, setDeliveryLocation] = useState("Campus Store Main Counter / Direct Handover");
   const [deliveryNotes, setDeliveryNotes] = useState("");
 
-  // Add Product form state
-  const [newProduct, setNewProduct] = useState({
-    title: "",
-    price: "",
-    category: "Books",
-    desc: "",
-    image: "",
-  });
+  // Sync state to local storage
+  useEffect(() => {
+    try {
+      localStorage.setItem("studentmartCart", JSON.stringify(cart));
+    } catch (e) {
+      console.warn("Storage sync error:", e);
+    }
+  }, [cart]);
 
-  // Fetch live products from backend
+  useEffect(() => {
+    try {
+      localStorage.setItem("studentmartWishlist", JSON.stringify(wishlist));
+    } catch (e) {
+      console.warn("Storage sync error:", e);
+    }
+  }, [wishlist]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("studentmartMyListings", JSON.stringify(myListings));
+    } catch (e) {
+      console.warn("Storage sync error:", e);
+    }
+  }, [myListings]);
+
+  // Fetch backend products
   const fetchProducts = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/products`);
@@ -136,7 +284,7 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
         }
       }
     } catch (err) {
-      console.warn("Could not reach products API, using stored products:", err);
+      console.warn("API unreachable, using stored products catalog:", err);
     }
   };
 
@@ -145,7 +293,7 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
     const token = localStorage.getItem("studentmartToken");
     if (!token) return;
     try {
-      setCustomerOrdersLoading(true);
+      setOrdersLoading(true);
       const res = await fetch(`${API_BASE_URL}/orders/my-orders`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -161,20 +309,17 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
     } catch (err) {
       console.warn("Could not fetch customer orders:", err);
     } finally {
-      setCustomerOrdersLoading(false);
+      setOrdersLoading(false);
     }
   };
 
+  // Fetch logged in user profile
   useEffect(() => {
     fetchProducts();
     fetchCustomerOrders();
-  }, []);
 
-  // Fetch current user profile
-  useEffect(() => {
     const fetchUser = async () => {
       const token = localStorage.getItem("studentmartToken");
-
       if (!token) {
         navigate("/login", { replace: true });
         return;
@@ -204,13 +349,13 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
             name: userData.name || "",
             email: userData.email || "",
             phone: userData.phone || "",
-            department: userData.department || userData.course || "",
-            year: userData.year || "",
-            address: userData.address || userData.college || "",
+            department: userData.department || userData.course || "Computer Science & Engineering",
+            year: userData.year || "3rd Year (2026)",
+            address: userData.address || userData.college || "Atria Institute of Technology, Bangalore",
           });
         }
       } catch (err) {
-        console.error("Error fetching profile:", err);
+        console.error("Profile fetch error:", err);
       } finally {
         setLoading(false);
       }
@@ -219,30 +364,8 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
     fetchUser();
   }, [navigate]);
 
-  // Determine effective user role
-  const effectiveRole =
-    propRole ||
-    user?.role ||
-    (() => {
-      try {
-        const u = localStorage.getItem("studentmartUser");
-        return u ? JSON.parse(u).role : "customer";
-      } catch {
-        return "customer";
-      }
-    })() ||
-    "customer";
-
+  const effectiveRole = propRole || user?.role || "customer";
   const isAdmin = effectiveRole === "admin";
-
-  // Prevent role-tab mismatch
-  useEffect(() => {
-    if (isAdmin && activeTab === "cart") {
-      setActiveTab("view-products");
-    } else if (!isAdmin && activeTab === "add-products") {
-      setActiveTab("view-products");
-    }
-  }, [isAdmin, activeTab]);
 
   const handleLogout = () => {
     localStorage.removeItem("studentmartToken");
@@ -250,319 +373,8 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
     navigate("/login", { replace: true });
   };
 
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    setAlertMessage({ type: "", text: "" });
-
-    const token = localStorage.getItem("studentmartToken");
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(editForm),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to update profile.");
-      }
-
-      const updatedUser = data.user || { ...user, ...editForm };
-      setUser(updatedUser);
-      localStorage.setItem("studentmartUser", JSON.stringify(updatedUser));
-      setAlertMessage({ type: "success", text: "Profile updated successfully!" });
-      setIsEditModalOpen(false);
-    } catch (err) {
-      setAlertMessage({ type: "error", text: err.message });
-    }
-  };
-
-  const handlePasswordSubmit = async (e) => {
-    e.preventDefault();
-    setAlertMessage({ type: "", text: "" });
-
-    if (passwordForm.newPassword.length < 6) {
-      setAlertMessage({
-        type: "error",
-        text: "New password must be at least 6 characters.",
-      });
-      return;
-    }
-
-    const token = localStorage.getItem("studentmartToken");
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(passwordForm),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to change password.");
-      }
-
-      setPasswordForm({ currentPassword: "", newPassword: "" });
-      setAlertMessage({ type: "success", text: "Password changed successfully!" });
-      setIsPasswordModalOpen(false);
-    } catch (err) {
-      setAlertMessage({ type: "error", text: err.message });
-    }
-  };
-
-  // Image Upload Handler (reads as Base64 data URL)
-  const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setAlertMessage({ type: "error", text: "Please select an image file (PNG, JPG, JPEG)." });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setNewProduct((prev) => ({
-        ...prev,
-        image: reader.result,
-      }));
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleEditImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setAlertMessage({ type: "error", text: "Please select an image file (PNG, JPG, JPEG)." });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setEditingProduct((prev) => ({
-        ...prev,
-        image: reader.result,
-      }));
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Add Product Handler (Admin only)
-  const handleAddProduct = async (e) => {
-    e.preventDefault();
-    if (!isAdmin) {
-      setAlertMessage({ type: "error", text: "Only administrators can add products." });
-      return;
-    }
-
-    if (!newProduct.title.trim()) {
-      setAlertMessage({ type: "error", text: "Please enter a product title." });
-      return;
-    }
-
-    if (newProduct.price === "" || isNaN(Number(newProduct.price))) {
-      setAlertMessage({ type: "error", text: "Please enter a valid price." });
-      return;
-    }
-
-    const fallbackImage =
-      newProduct.category === "Books"
-        ? "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80"
-        : newProduct.category === "Gadgets"
-        ? "https://images.unsplash.com/photo-1594980596870-8aa52a78d8cd?w=600&auto=format&fit=crop&q=80"
-        : newProduct.category === "College Bags"
-        ? "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&auto=format&fit=crop&q=80"
-        : newProduct.category === "Uniform"
-        ? "https://images.unsplash.com/photo-1584467735871-8e85353a8413?w=600&auto=format&fit=crop&q=80"
-        : "https://images.unsplash.com/photo-1581291518857-4e27b48ff24e?w=600&auto=format&fit=crop&q=80";
-
-    const itemPayload = {
-      title: newProduct.title.trim(),
-      price: Number(newProduct.price),
-      category: newProduct.category || "Books",
-      desc: newProduct.desc.trim() || "Available for campus pickup.",
-      image: newProduct.image || fallbackImage,
-    };
-
-    try {
-      const token = localStorage.getItem("studentmartToken");
-      if (!token) {
-        throw new Error("Admin session expired. Please log in again.");
-      }
-
-      const res = await fetch(`${API_BASE_URL}/products`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(itemPayload),
-      });
-
-      let data = {};
-      const contentType = res.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        data = await res.json();
-      } else {
-        const rawText = await res.text();
-        console.error("Non-JSON API response:", res.status, rawText);
-        if (!res.ok) {
-          if (res.status === 413) {
-            throw new Error("Uploaded image is too large. Please use an image file under 10MB or paste an image URL.");
-          }
-          if (res.status === 401) {
-            throw new Error("Admin session expired. Please log in again.");
-          }
-          if (res.status === 403) {
-            throw new Error("Access denied. Admin privileges required.");
-          }
-          if (res.status === 404) {
-            throw new Error("Cannot reach backend API (404). Please ensure backend server is running on port 5001.");
-          }
-          throw new Error(`Server returned HTTP ${res.status}: ${res.statusText || "Unexpected response"}`);
-        }
-      }
-
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to publish product.");
-      }
-
-      const savedItem = data.product || { ...itemPayload, id: Date.now().toString() };
-      const updated = [savedItem, ...products.filter((p) => (p.id || p._id) !== (savedItem.id || savedItem._id))];
-      setProducts(updated);
-      localStorage.setItem("studentmartProducts", JSON.stringify(updated));
-
-      setNewProduct({
-        title: "",
-        price: "",
-        category: "Books",
-        desc: "",
-        image: "",
-      });
-
-      setAlertMessage({
-        type: "success",
-        text: `"${savedItem.title}" published to Student Store!`,
-      });
-
-      setActiveTab("view-products");
-    } catch (err) {
-      console.error("Add Product Error:", err);
-      setAlertMessage({ type: "error", text: err.message || "Failed to add product." });
-    }
-  };
-
-  // Open Edit Product Modal
-  const handleOpenEditProduct = (product) => {
-    setEditingProduct({
-      id: product.id || product._id,
-      title: product.title || product.name || "",
-      price: product.price !== undefined ? product.price : "",
-      category: product.category || "Books",
-      desc: product.desc || product.description || "",
-      image: product.image || "",
-    });
-  };
-
-  // Save Edited Product (Admin only)
-  const handleSaveEditProduct = async (e) => {
-    e.preventDefault();
-    if (!isAdmin || !editingProduct) return;
-
-    try {
-      const token = localStorage.getItem("studentmartToken");
-      const res = await fetch(`${API_BASE_URL}/products/${editingProduct.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title: editingProduct.title.trim(),
-          price: Number(editingProduct.price),
-          category: editingProduct.category,
-          desc: editingProduct.desc.trim(),
-          image: editingProduct.image,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to update product.");
-      }
-
-      const updatedItem = data.product || editingProduct;
-      const updated = products.map((p) =>
-        (p.id === editingProduct.id || p._id === editingProduct.id) ? { ...p, ...updatedItem } : p
-      );
-      setProducts(updated);
-      localStorage.setItem("studentmartProducts", JSON.stringify(updated));
-
-      setAlertMessage({
-        type: "success",
-        text: `"${updatedItem.title}" updated successfully!`,
-      });
-      setEditingProduct(null);
-    } catch (err) {
-      setAlertMessage({ type: "error", text: err.message || "Failed to update product." });
-    }
-  };
-
-  // Delete Product Handler (Admin only)
-  const handleDeleteProduct = async (productId) => {
-    if (!isAdmin) {
-      setAlertMessage({ type: "error", text: "Only administrators can delete products." });
-      return;
-    }
-
-    if (!window.confirm("Are you sure you want to delete this product from the store?")) {
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem("studentmartToken");
-      if (token) {
-        const res = await fetch(`${API_BASE_URL}/products/${productId}`, {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const data = await res.json();
-        if (!res.ok && res.status !== 404) {
-          throw new Error(data.message || "Failed to delete product from server.");
-        }
-      }
-
-      const updated = products.filter((p) => p.id !== productId && p._id !== productId);
-      setProducts(updated);
-      localStorage.setItem("studentmartProducts", JSON.stringify(updated));
-
-      setAlertMessage({
-        type: "success",
-        text: "Product deleted from Student Store.",
-      });
-    } catch (err) {
-      setAlertMessage({ type: "error", text: err.message || "Failed to delete product." });
-    }
-  };
-
-  // Add to Cart Handler (Customer only) with quantity support
-  const addToCart = (product) => {
-    if (isAdmin) {
-      setAlertMessage({ type: "error", text: "Administrators cannot add items to cart." });
-      return;
-    }
+  // Add to cart with quantity increment
+  const handleAddToCart = (product) => {
     const prodId = product._id || product.id;
     const existingIndex = cart.findIndex((item) => (item._id || item.id) === prodId);
 
@@ -578,52 +390,87 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
     }
 
     setCart(updated);
-    try {
-      localStorage.setItem("studentmartCart", JSON.stringify(updated));
-    } catch (err) {
-      console.warn("Storage error", err);
-    }
-    setAlertMessage({ type: "success", text: `Added "${product.title}" to cart!` });
+    showToast("success", `Added "${product.title || product.name}" to cart!`);
   };
 
-  // Update item quantity in cart
+  // Direct Buy Now handler
+  const handleBuyNow = (product) => {
+    handleAddToCart(product);
+    setIsCartOpen(true);
+  };
+
+  // Cart quantity controls
   const handleUpdateQuantity = (idx, delta) => {
-    const newCart = [...cart];
-    const currentQty = newCart[idx].quantity || 1;
-    const newQty = currentQty + delta;
+    const updated = [...cart];
+    const currentQty = updated[idx].quantity || 1;
+    const nextQty = currentQty + delta;
 
-    if (newQty <= 0) {
-      newCart.splice(idx, 1);
+    if (nextQty <= 0) {
+      updated.splice(idx, 1);
     } else {
-      newCart[idx] = { ...newCart[idx], quantity: newQty };
+      updated[idx] = { ...updated[idx], quantity: nextQty };
     }
-
-    setCart(newCart);
-    try {
-      localStorage.setItem("studentmartCart", JSON.stringify(newCart));
-    } catch (err) {
-      console.warn("Storage error", err);
-    }
+    setCart(updated);
   };
 
-  // Remove single item from cart
   const handleRemoveFromCart = (idx) => {
-    const newCart = [...cart];
-    newCart.splice(idx, 1);
-    setCart(newCart);
-    try {
-      localStorage.setItem("studentmartCart", JSON.stringify(newCart));
-    } catch (err) {
-      console.warn("Storage error", err);
+    const updated = [...cart];
+    updated.splice(idx, 1);
+    setCart(updated);
+  };
+
+  // Wishlist toggle handler
+  const handleToggleWishlist = (product) => {
+    const prodId = product._id || product.id;
+    const exists = wishlist.some((item) => (item._id || item.id) === prodId);
+
+    let updated;
+    if (exists) {
+      updated = wishlist.filter((item) => (item._id || item.id) !== prodId);
+      showToast("neutral", `Removed from your wishlist.`);
+    } else {
+      updated = [...wishlist, product];
+      showToast("success", `Saved "${product.title || product.name}" to your wishlist!`);
+    }
+    setWishlist(updated);
+  };
+
+  // Student Post Listing Handler
+  const handleAddStudentListing = (newListingData) => {
+    const newListing = {
+      id: `listing-${Date.now()}`,
+      _id: `listing-${Date.now()}`,
+      title: newListingData.title,
+      name: newListingData.title,
+      price: Number(newListingData.price),
+      category: newListingData.category,
+      desc: newListingData.desc,
+      image: newListingData.image,
+      condition: newListingData.condition,
+      location: newListingData.location,
+      sellerName: user?.name || "Verified Student Peer",
+      status: "Active",
+      views: 1,
+      createdAt: "Just now",
+    };
+
+    setMyListings([newListing, ...myListings]);
+    setProducts([newListing, ...products]);
+    showToast("success", `"${newListing.title}" posted to campus marketplace!`);
+  };
+
+  // Delete student listing
+  const handleDeleteListing = (listingId) => {
+    if (window.confirm("Are you sure you want to delete this listing?")) {
+      setMyListings(myListings.filter((l) => l.id !== listingId && l._id !== listingId));
+      setProducts(products.filter((p) => p.id !== listingId && p._id !== listingId));
+      showToast("neutral", "Listing removed from campus marketplace.");
     }
   };
 
-  // Place Campus Order (Sends real order to backend API)
+  // Place Campus Order handler
   const handlePlaceCampusOrder = async () => {
-    if (cart.length === 0) {
-      setAlertMessage({ type: "error", text: "Your shopping cart is empty." });
-      return;
-    }
+    if (cart.length === 0) return;
 
     const token = localStorage.getItem("studentmartToken");
     if (!token) {
@@ -632,7 +479,6 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
     }
 
     setIsPlacingOrder(true);
-    setAlertMessage({ type: "", text: "" });
 
     try {
       const computedTotal = cart.reduce(
@@ -665,1102 +511,967 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
       });
 
       const data = await res.json();
-
       if (!res.ok) {
         throw new Error(data.message || "Failed to place order.");
       }
 
-      // Order successfully placed!
       setCart([]);
-      localStorage.setItem("studentmartCart", JSON.stringify([]));
-      setDeliveryNotes("");
+      setIsCartOpen(false);
+      showToast("success", `🎉 Order #${data.order?.orderId || "SM-" + Date.now().toString().slice(-4)} placed!`);
 
-      setAlertMessage({
-        type: "success",
-        text: `🎉 Order #${data.order?.orderId || ""} placed successfully! It is now visible in the Campus Store Admin panel.`,
-      });
-
-      // Fetch customer orders and navigate to "orders" tab
       await fetchCustomerOrders();
       setActiveTab("orders");
     } catch (err) {
-      console.error("Order placement error:", err);
-      setAlertMessage({
-        type: "error",
-        text: err.message || "Failed to place order. Please try again.",
-      });
+      console.error("Order error:", err);
+      showToast("error", err.message || "Order placement failed.");
     } finally {
       setIsPlacingOrder(false);
     }
   };
 
-  // Filter & Sort Logic
-  const filteredProducts = products.filter((item) => {
-    const term = searchTerm.toLowerCase().trim();
-    const title = (item.title || item.name || "").toLowerCase();
-    const desc = (item.desc || item.description || "").toLowerCase();
-    const cat = (item.category || "").toLowerCase();
+  // Profile Update Handler
+  const handleEditProfileSubmit = async (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem("studentmartToken");
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(editForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to update profile.");
 
-    const matchesSearch =
-      term === "" ||
-      title.includes(term) ||
-      desc.includes(term) ||
-      cat.includes(term);
-
-    const matchesCategory =
-      selectedCategory === "All" || item.category === selectedCategory;
-
-    return matchesSearch && matchesCategory;
-  });
-
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (priceSort === "low-to-high") {
-      return a.price - b.price;
+      const updated = data.user || { ...user, ...editForm };
+      setUser(updated);
+      localStorage.setItem("studentmartUser", JSON.stringify(updated));
+      setIsEditProfileModalOpen(false);
+      showToast("success", "Profile updated successfully!");
+    } catch (err) {
+      showToast("error", err.message);
     }
-    if (priceSort === "high-to-low") {
-      return b.price - a.price;
+  };
+
+  // Password Change Handler
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (passwordForm.newPassword.length < 6) {
+      showToast("error", "New password must be at least 6 characters.");
+      return;
     }
-    return 0;
-  });
+
+    const token = localStorage.getItem("studentmartToken");
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(passwordForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to change password.");
+
+      setPasswordForm({ currentPassword: "", newPassword: "" });
+      setIsPasswordModalOpen(false);
+      showToast("success", "Password updated successfully!");
+    } catch (err) {
+      showToast("error", err.message);
+    }
+  };
+
+  // Filtered and Sorted Products
+  const filteredProducts = useMemo(() => {
+    return products.filter((item) => {
+      const term = searchTerm.toLowerCase().trim();
+      const title = (item.title || item.name || "").toLowerCase();
+      const desc = (item.desc || item.description || "").toLowerCase();
+      const cat = (item.category || "").toLowerCase();
+
+      const matchesSearch =
+        term === "" || title.includes(term) || desc.includes(term) || cat.includes(term);
+
+      const matchesCategory =
+        selectedCategory === "All" || item.category === selectedCategory;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, searchTerm, selectedCategory]);
+
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      if (priceSort === "low-to-high") return Number(a.price) - Number(b.price);
+      if (priceSort === "high-to-low") return Number(b.price) - Number(a.price);
+      return 0;
+    });
+  }, [filteredProducts, priceSort]);
+
+  // Categories list with counts
+  const categoryList = [
+    { name: "Books", icon: BookOpen, color: "#4f46e5" },
+    { name: "Electronics", icon: Laptop, color: "#0ea5e9" },
+    { name: "Notes", icon: FileText, color: "#10b981" },
+    { name: "Furniture", icon: Armchair, color: "#f59e0b" },
+    { name: "Accessories", icon: Tag, color: "#8b5cf6" },
+    { name: "Sports", icon: Trophy, color: "#f43f5e" },
+    { name: "Other", icon: HelpCircle, color: "#64748b" },
+  ];
+
+  // Recommended / Trending Products
+  const recommendedProducts = useMemo(() => {
+    return products.slice(0, 3);
+  }, [products]);
+
+  // Cart total sum
+  const cartSubtotal = useMemo(() => {
+    return cart.reduce(
+      (sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 1),
+      0
+    );
+  }, [cart]);
 
   if (loading) {
     return (
-      <div className="dashboard-loading">
-        Loading StudentMart...
+      <div className="portal-container" style={{ alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+          <div className="btn-spinner" style={{ width: 36, height: 36, borderColor: "rgba(99, 102, 241, 0.2)", borderTopColor: "#4f46e5" }} />
+          <h3 style={{ fontSize: 16, color: "#475569", fontWeight: 600 }}>Loading StudentMart...</h3>
+        </div>
       </div>
     );
   }
 
-  // Display attributes matching profile screenshot
-  const displayName = user?.name || user?.usn?.toLowerCase() || "feb";
-  const avatarLetter = (user?.name || user?.usn || "F").charAt(0).toUpperCase();
-  const displayEmail = user?.email || "feb@gmail.com";
-  const displayPhone = user?.phone || "1234567890";
-  const displayDepartment = user?.department || user?.course || "CSE";
-  const displayYear = user?.year || "2026";
-  const displayAddress = user?.address || user?.college || "Bangalore, Karnataka";
+  const displayName = user?.name || user?.usn || "Student";
 
   return (
     <div className="portal-container">
       {/* =========================================
-          LEFT SIDEBAR (ROLE-BASED VIEW)
+          1. SIDEBAR NAVIGATION
           ========================================= */}
-      <aside className="portal-sidebar">
-        {/* Brand */}
-        <div className="sidebar-brand">
-          <div className="brand-icon">S</div>
-          <div>
-            <span className="brand-title">StudentMart</span>
-          </div>
-        </div>
-
-        {/* Menu title */}
-        <div className="sidebar-menu-title">
-          {isAdmin ? "ADMIN MENU" : "MAIN MENU"}
-        </div>
-
-        {/* Navigation list matching requirements */}
-        <nav className="sidebar-nav">
-          {/* 1. Profile (Customer & Admin) */}
-          <button
-            type="button"
-            className={`sidebar-item ${activeTab === "profile" ? "active" : ""}`}
-            onClick={() => setActiveTab("profile")}
-          >
-            <span className="sidebar-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            </span>
-            Profile
-          </button>
-
-          {/* 2. Add Products (Admin ONLY) */}
-          {isAdmin && (
-            <button
-              type="button"
-              className={`sidebar-item ${activeTab === "add-products" ? "active" : ""}`}
-              onClick={() => setActiveTab("add-products")}
-            >
-              <span className="sidebar-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="4" ry="4" />
-                  <line x1="12" y1="8" x2="12" y2="16" />
-                  <line x1="8" y1="12" x2="16" y2="12" />
-                </svg>
-              </span>
-              Add Products
-            </button>
-          )}
-
-          {/* 3. View Products (Customer & Admin) */}
-          <button
-            type="button"
-            className={`sidebar-item ${activeTab === "view-products" || activeTab === "products" ? "active" : ""}`}
-            onClick={() => setActiveTab("view-products")}
-          >
-            <span className="sidebar-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m7.5 4.27 9 5.15" />
-                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-                <path d="m3.3 7 8.7 5 8.7-5" />
-                <path d="M12 22V12" />
-              </svg>
-            </span>
-            View Products
-          </button>
-
-          {/* 4. Shopping Cart (Customer ONLY) */}
-          {!isAdmin && (
-            <button
-              type="button"
-              className={`sidebar-item ${activeTab === "cart" ? "active" : ""}`}
-              onClick={() => setActiveTab("cart")}
-            >
-              <span className="sidebar-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="9" cy="21" r="1" />
-                  <circle cx="20" cy="21" r="1" />
-                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-                </svg>
-              </span>
-              Shopping Cart {cart.length > 0 && `(${cart.reduce((sum, item) => sum + (item.quantity || 1), 0)})`}
-            </button>
-          )}
-
-          {/* 5. My Orders (Customer ONLY) */}
-          {!isAdmin && (
-            <button
-              type="button"
-              className={`sidebar-item ${activeTab === "orders" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("orders");
-                fetchCustomerOrders();
-              }}
-            >
-              <span className="sidebar-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <path d="M16 10a4 4 0 0 1-8 0" />
-                </svg>
-              </span>
-              My Orders {customerOrders.length > 0 && `(${customerOrders.length})`}
-            </button>
-          )}
-        </nav>
-
-        {/* Logout at bottom */}
-        <div className="sidebar-footer">
-          <button
-            type="button"
-            className="sidebar-logout"
-            onClick={handleLogout}
-          >
-            <span className="sidebar-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-            </span>
-            Logout
-          </button>
-        </div>
-      </aside>
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        user={user}
+        cartCount={cart.length}
+        wishlistCount={wishlist.length}
+        ordersCount={customerOrders.length}
+        unreadMessagesCount={2}
+        onLogout={handleLogout}
+        isCollapsed={sidebarCollapsed}
+        setIsCollapsed={setSidebarCollapsed}
+        mobileOpen={mobileMenuOpen}
+        setMobileOpen={setMobileMenuOpen}
+        isAdmin={isAdmin}
+      />
 
       {/* =========================================
-          RIGHT MAIN CONTENT AREA
+          MAIN APPLICATION WORKSPACE
           ========================================= */}
-      <main className="portal-content">
-        {/* Global Feedback Alert */}
-        {alertMessage.text && (
-          <div className={`alert-box ${alertMessage.type}`}>
-            {alertMessage.text}
-          </div>
-        )}
+      <div className="main-content-area">
+        {/* =========================================
+            2. TOP NAVIGATION BAR
+            ========================================= */}
+        <Navbar
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          cartCount={cart.reduce((c, i) => c + (i.quantity || 1), 0)}
+          onOpenCart={() => setIsCartOpen(true)}
+          onOpenSellModal={() => setIsSellModalOpen(true)}
+          user={user}
+          onOpenMobileMenu={() => setMobileMenuOpen(true)}
+          onNavigateToTab={(tab) => setActiveTab(tab)}
+        />
 
         {/* =========================================
-            1. PROFILE VIEW
+            PAGE CONTENT SWITCHER
             ========================================= */}
-        {activeTab === "profile" && (
-          <div>
-            <header className="portal-header">
-              <h1>
-                Welcome, {displayName}! 👋
-              </h1>
-              <p>
-                {isAdmin
-                  ? "Manage your StudentMart Administrator profile."
-                  : "Manage your StudentMart student profile here."}
-              </p>
-            </header>
-
-            <div className="profile-card-container">
-              <div className="profile-box">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-                  <h2 className="profile-box-title" style={{ margin: 0 }}>My Profile</h2>
-                  <span className={`role-badge ${isAdmin ? "admin" : "customer"}`}>
-                    {isAdmin ? "Store Admin" : "Student"}
-                  </span>
-                </div>
-
-                {/* Avatar circle with initial */}
-                <div className="profile-avatar-circle">
-                  <span>{avatarLetter}</span>
-                </div>
-
-                {/* Profile Details List */}
-                <div className="profile-details-list">
-                  <div className="profile-detail-row">
-                    <span className="profile-label">Name</span>
-                    <span className="profile-value">{displayName}</span>
+        <main className="dashboard-page-content">
+          {/* TAB 1: OVERVIEW DASHBOARD */}
+          {activeTab === "dashboard" && (
+            <>
+              {/* 3. Welcome Section Banner */}
+              <section className="dashboard-welcome-banner">
+                <div className="welcome-banner-decor-glow" />
+                <div className="welcome-banner-copy">
+                  <div className="welcome-campus-pill">
+                    <Sparkles size={14} />
+                    <span>Campus Marketplace · Verified Community</span>
                   </div>
 
-                  <div className="profile-detail-row">
-                    <span className="profile-label">Email</span>
-                    <span className="profile-value">{displayEmail}</span>
+                  <div className="welcome-title-row">
+                    <h2>Good morning, {displayName}! 👋</h2>
                   </div>
 
-                  <div className="profile-detail-row">
-                    <span className="profile-label">Role</span>
-                    <span className="profile-value" style={{ textTransform: "capitalize", fontWeight: "700", color: isAdmin ? "#7c3aed" : "#2563eb" }}>
-                      {effectiveRole}
-                    </span>
-                  </div>
+                  <p className="welcome-subtitle">
+                    Find great deals and discover items from your campus. Save money, recycle essentials, and meet verified students safely.
+                  </p>
 
-                  <div className="profile-detail-row">
-                    <span className="profile-label">Phone</span>
-                    <span className="profile-value">{displayPhone}</span>
-                  </div>
+                  <div className="welcome-banner-actions">
+                    <button
+                      type="button"
+                      className="btn-banner-primary"
+                      onClick={() => setActiveTab("view-products")}
+                    >
+                      <ShoppingBag size={16} />
+                      <span>Explore Marketplace</span>
+                    </button>
 
-                  <div className="profile-detail-row">
-                    <span className="profile-label">Department</span>
-                    <span className="profile-value">{displayDepartment}</span>
-                  </div>
-
-                  <div className="profile-detail-row">
-                    <span className="profile-label">Year</span>
-                    <span className="profile-value">{displayYear}</span>
-                  </div>
-
-                  <div className="profile-detail-row">
-                    <span className="profile-label">Address</span>
-                    <span className="profile-value">{displayAddress}</span>
+                    <button
+                      type="button"
+                      className="btn-banner-secondary"
+                      onClick={() => setIsSellModalOpen(true)}
+                    >
+                      <PlusCircle size={16} />
+                      <span>Post Listing</span>
+                    </button>
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="profile-actions">
-                  <button
-                    type="button"
-                    className="btn-profile-edit"
-                    onClick={() => setIsEditModalOpen(true)}
-                  >
-                    Edit Profile
-                  </button>
+                <div className="welcome-banner-badge-preview">
+                  <span className="preview-stat-number">{products.length}</span>
+                  <span className="preview-stat-label">Available Items Near You</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#34d399", marginTop: 4 }}>
+                    <CheckCircle2 size={13} />
+                    <span>100% Student Verified</span>
+                  </div>
+                </div>
+              </section>
 
+              {/* 4. Statistics Cards */}
+              <section className="statistics-cards-grid">
+                <StatCard
+                  title="Total Listings"
+                  value={products.length}
+                  icon={Package}
+                  trend="+8 this week"
+                  trendPositive={true}
+                  accentColor="indigo"
+                  onClick={() => setActiveTab("view-products")}
+                />
+                <StatCard
+                  title="Items Sold"
+                  value={myListings.length > 0 ? "2" : "0"}
+                  icon={Tag}
+                  trend="₹1,450 earned"
+                  trendPositive={true}
+                  accentColor="emerald"
+                  onClick={() => setActiveTab("my-listings")}
+                />
+                <StatCard
+                  title="Active Orders"
+                  value={customerOrders.length}
+                  icon={Clock}
+                  trend={customerOrders.length > 0 ? "In Progress" : "No active orders"}
+                  trendPositive={customerOrders.length > 0}
+                  accentColor="amber"
+                  onClick={() => setActiveTab("orders")}
+                />
+                <StatCard
+                  title="Wishlist Items"
+                  value={wishlist.length}
+                  icon={Heart}
+                  trend="Saved items"
+                  trendPositive={true}
+                  accentColor="rose"
+                  onClick={() => setActiveTab("wishlist")}
+                />
+              </section>
+
+              {/* 6. Categories Section */}
+              <section className="dashboard-section">
+                <div className="section-header-row">
+                  <div className="section-header-title">
+                    <h3>Explore Categories</h3>
+                    <p>Browse student essentials by category</p>
+                  </div>
                   <button
                     type="button"
-                    className="btn-profile-password"
-                    onClick={() => setIsPasswordModalOpen(true)}
+                    className="section-view-all-btn"
+                    onClick={() => {
+                      setSelectedCategory("All");
+                      setActiveTab("view-products");
+                    }}
                   >
-                    Change Password
+                    <span>View all categories</span>
+                    <ArrowRight size={14} />
                   </button>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* =========================================
-            2. VIEW PRODUCTS (STUDENT STORE)
-            ========================================= */}
-        {(activeTab === "view-products" || activeTab === "products") && (
-          <div className="store-container">
-            {/* Store Header Top Bar */}
-            <div className="store-header">
-              <div>
-                <h2 className="store-title">Student Store</h2>
-                <p className="store-subtitle">
-                  {isAdmin
-                    ? "Manage campus products, inventory, and listings"
-                    : "Browse and buy used textbooks, calculators, bags, and essentials"}
-                </p>
-              </div>
-
-              <div className="store-header-actions">
-                {/* Cart button ONLY for Customer */}
-                {!isAdmin && (
-                  <button
-                    type="button"
-                    className="btn-store-cart"
-                    onClick={() => setActiveTab("cart")}
-                  >
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="9" cy="21" r="1" />
-                      <circle cx="20" cy="21" r="1" />
-                      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-                    </svg>
-                    Cart {cart.length > 0 && `(${cart.length})`}
-                  </button>
-                )}
-
-                {/* + Add Product button ONLY for Admin - switches directly to Add Products tab */}
-                {isAdmin && (
-                  <button
-                    type="button"
-                    className="btn-store-add"
-                    onClick={() => setActiveTab("add-products")}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    + Add Product
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <hr className="store-divider" />
-
-            {/* Search, Category & Price Sort Bar */}
-            <div className="store-filter-bar">
-              {/* Search input */}
-              <input
-                type="text"
-                className="store-search-input"
-                placeholder="Search for pen, book, uniform..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-
-              {/* Category Filter */}
-              <select
-                className="store-select"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-              >
-                <option value="All">All Categories</option>
-                <option value="Books">Books</option>
-                <option value="Gadgets">Gadgets</option>
-                <option value="College Bags">College Bags</option>
-                <option value="Uniform">Uniform</option>
-                <option value="Stationery">Stationery</option>
-                <option value="Essentials">Essentials</option>
-                <option value="Other">Other</option>
-              </select>
-
-              {/* Price Sort Filter */}
-              <select
-                className="store-select"
-                value={priceSort}
-                onChange={(e) => setPriceSort(e.target.value)}
-              >
-                <option value="default">Sort by Price</option>
-                <option value="low-to-high">Price: Low to High</option>
-                <option value="high-to-low">Price: High to Low</option>
-              </select>
-            </div>
-
-            {/* Products Grid format */}
-            {sortedProducts.length === 0 ? (
-              <div className="store-empty-box">
-                <p>No products found. Add some items like College Bags or Books!</p>
-              </div>
-            ) : (
-              <div className="store-grid">
-                {sortedProducts.map((item) => (
-                  <div key={item.id || item._id} className="store-card">
-                    {/* Image Section */}
-                    <div className="store-card-img-wrapper">
-                      <img
-                        src={item.image}
-                        alt={item.title || item.name}
-                        className="store-card-img"
-                        onError={(e) => {
-                          e.target.src =
-                            "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80";
+                <div className="categories-grid">
+                  {categoryList.map((cat) => {
+                    const count = products.filter((p) => p.category === cat.name).length;
+                    return (
+                      <CategoryCard
+                        key={cat.name}
+                        category={cat.name}
+                        icon={cat.icon}
+                        count={count}
+                        accentColor={cat.color}
+                        isSelected={selectedCategory === cat.name}
+                        onClick={() => {
+                          setSelectedCategory(cat.name);
+                          setActiveTab("view-products");
                         }}
                       />
-                      <span className="store-card-badge">{item.category}</span>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* 7. Recommended / Trending Products */}
+              <section className="dashboard-section">
+                <div className="section-header-row">
+                  <div className="section-header-title">
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <h3>Trending on Campus</h3>
+                      <span className="nav-item-badge rose">Hot Deals</span>
                     </div>
-
-                    {/* Card Content */}
-                    <div className="store-card-body">
-                      <h3 className="store-card-title">{item.title || item.name}</h3>
-                      <p className="store-card-desc">{item.desc || item.description}</p>
-
-                      <div className="store-card-footer">
-                        <span className="store-card-price">₹{item.price}</span>
-
-                        {/* Customer: Add to Cart */}
-                        {!isAdmin ? (
-                          <button
-                            type="button"
-                            className="btn-card-add"
-                            onClick={() => addToCart(item)}
-                          >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="9" cy="21" r="1" />
-                              <circle cx="20" cy="21" r="1" />
-                              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-                            </svg>
-                            Add to Cart
-                          </button>
-                        ) : (
-                          /* Admin: Edit and Delete */
-                          <div className="store-card-admin-actions">
-                            <button
-                              type="button"
-                              className="btn-card-edit"
-                              onClick={() => handleOpenEditProduct(item)}
-                              title="Edit this product"
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                              </svg>
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-card-delete"
-                              onClick={() => handleDeleteProduct(item.id || item._id)}
-                              title="Delete this product"
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="3 6 5 6 21 6" />
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                <line x1="10" y1="11" x2="10" y2="17" />
-                                <line x1="14" y1="11" x2="14" y2="17" />
-                              </svg>
-                              Delete
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <p>Highly requested textbooks and gear this exam week</p>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* =========================================
-            3. ADD PRODUCTS VIEW (ADMIN ONLY)
-            ========================================= */}
-        {isAdmin && activeTab === "add-products" && (
-          <div className="store-container">
-            <div className="store-header">
-              <div>
-                <h2 className="store-title">+ Add Product to Student Store</h2>
-                <p className="store-subtitle">
-                  Create and publish a new item to the campus marketplace
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setActiveTab("view-products")}
-              >
-                ← View Store
-              </button>
-            </div>
-
-            <hr className="store-divider" />
-
-            <form
-              onSubmit={handleAddProduct}
-              className="modal-form"
-              style={{ maxWidth: "620px" }}
-            >
-              <div className="form-group">
-                <label>Product Name / Title *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Engineering Mathematics Textbook, FX-991EX Calculator"
-                  value={newProduct.title}
-                  onChange={(e) =>
-                    setNewProduct({ ...newProduct, title: e.target.value })
-                  }
-                  required
-                />
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                <div className="form-group">
-                  <label>Price (₹) *</label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="e.g. 450"
-                    value={newProduct.price}
-                    onChange={(e) =>
-                      setNewProduct({ ...newProduct, price: e.target.value })
-                    }
-                    required
-                  />
                 </div>
 
-                <div className="form-group">
-                  <label>Category *</label>
-                  <select
-                    className="store-select"
-                    style={{ width: "100%", padding: "10px 12px" }}
-                    value={newProduct.category}
-                    onChange={(e) =>
-                      setNewProduct({ ...newProduct, category: e.target.value })
-                    }
+                <div className="products-responsive-grid">
+                  {recommendedProducts.map((prod) => (
+                    <ProductCard
+                      key={prod.id || prod._id}
+                      product={prod}
+                      onAddToCart={handleAddToCart}
+                      onViewDetails={setSelectedProductForDetail}
+                      onToggleWishlist={handleToggleWishlist}
+                      isWishlisted={wishlist.some((w) => (w.id || w._id) === (prod.id || prod._id))}
+                    />
+                  ))}
+                </div>
+              </section>
+
+              {/* 5. Recently Added Products */}
+              <section className="dashboard-section">
+                <div className="section-header-row">
+                  <div className="section-header-title">
+                    <h3>Recently Added Products</h3>
+                    <p>Fresh listings posted by students across faculties</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="section-view-all-btn"
+                    onClick={() => setActiveTab("view-products")}
                   >
-                    <option value="Books">Books</option>
-                    <option value="Gadgets">Gadgets</option>
-                    <option value="College Bags">College Bags</option>
-                    <option value="Stationery">Stationery</option>
-                    <option value="Uniform">Uniform</option>
-                    <option value="Essentials">Essentials</option>
-                    <option value="Other">Other</option>
+                    <span>Browse complete catalog ({products.length})</span>
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
+
+                <div className="products-responsive-grid">
+                  {products.slice(0, 6).map((prod) => (
+                    <ProductCard
+                      key={prod.id || prod._id}
+                      product={prod}
+                      onAddToCart={handleAddToCart}
+                      onViewDetails={setSelectedProductForDetail}
+                      onToggleWishlist={handleToggleWishlist}
+                      isWishlisted={wishlist.some((w) => (w.id || w._id) === (prod.id || prod._id))}
+                    />
+                  ))}
+                </div>
+              </section>
+            </>
+          )}
+
+          {/* TAB 2: BROWSE ALL PRODUCTS */}
+          {(activeTab === "view-products" || activeTab === "products") && (
+            <div className="dashboard-section">
+              <div className="section-header-row">
+                <div className="section-header-title">
+                  <h2>Campus Marketplace</h2>
+                  <p>Search and filter pre-loved student textbooks, calculators, and gadgets</p>
+                </div>
+                <button
+                  type="button"
+                  className="btn-banner-primary"
+                  onClick={() => setIsSellModalOpen(true)}
+                >
+                  <PlusCircle size={16} />
+                  <span>Sell an Item</span>
+                </button>
+              </div>
+
+              {/* Filter bar */}
+              <div className="browse-filter-bar">
+                <div className="category-pill-filter-list">
+                  <button
+                    type="button"
+                    className={`category-pill-filter-btn ${selectedCategory === "All" ? "active" : ""}`}
+                    onClick={() => setSelectedCategory("All")}
+                  >
+                    All Items ({products.length})
+                  </button>
+                  {categoryList.map((cat) => {
+                    const count = products.filter((p) => p.category === cat.name).length;
+                    return (
+                      <button
+                        key={cat.name}
+                        type="button"
+                        className={`category-pill-filter-btn ${selectedCategory === cat.name ? "active" : ""}`}
+                        onClick={() => setSelectedCategory(cat.name)}
+                      >
+                        {cat.name} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="browse-sort-controls">
+                  <span className="sort-label">Sort by:</span>
+                  <select
+                    className="sort-select"
+                    value={priceSort}
+                    onChange={(e) => setPriceSort(e.target.value)}
+                  >
+                    <option value="default">Featured & Recent</option>
+                    <option value="low-to-high">Price: Low to High</option>
+                    <option value="high-to-low">Price: High to Low</option>
                   </select>
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Description</label>
-                <textarea
-                  rows="3"
-                  placeholder="Enter details about condition, semester, edition, notes..."
-                  value={newProduct.desc}
-                  onChange={(e) =>
-                    setNewProduct({ ...newProduct, desc: e.target.value })
-                  }
+              {/* Product Grid or Empty State */}
+              {sortedProducts.length === 0 ? (
+                <EmptyState
+                  icon={Search}
+                  title="No items found"
+                  description={`We couldn't find any products matching "${searchTerm || selectedCategory}". Try checking your spelling or clearing filters.`}
+                  actionLabel="Clear All Filters"
+                  onAction={() => {
+                    setSearchTerm("");
+                    setSelectedCategory("All");
+                  }}
+                  accentColor="indigo"
                 />
-              </div>
-
-              {/* IMAGE SECTION */}
-              <div className="form-group">
-                <label>Product Image</label>
-
-                {/* Local file upload */}
-                <div className="image-upload-zone">
-                  <input
-                    type="file"
-                    accept="image/png, image/jpeg, image/jpg"
-                    onChange={handleImageUpload}
-                  />
-                  <div className="upload-icon">📸</div>
-                  <p className="upload-text">Click to choose image file</p>
-                  <p className="upload-subtext">Supports PNG, JPG, JPEG from your device</p>
+              ) : (
+                <div className="products-responsive-grid">
+                  {sortedProducts.map((prod) => (
+                    <ProductCard
+                      key={prod.id || prod._id}
+                      product={prod}
+                      onAddToCart={handleAddToCart}
+                      onViewDetails={setSelectedProductForDetail}
+                      onToggleWishlist={handleToggleWishlist}
+                      isWishlisted={wishlist.some((w) => (w.id || w._id) === (prod.id || prod._id))}
+                    />
+                  ))}
                 </div>
+              )}
+            </div>
+          )}
 
-                {/* URL input */}
-                <div style={{ marginTop: "8px" }}>
-                  <input
-                    type="url"
-                    placeholder="Or paste an image web URL (https://...)"
-                    value={newProduct.image.startsWith("data:") ? "" : newProduct.image}
-                    onChange={(e) =>
-                      setNewProduct({ ...newProduct, image: e.target.value })
-                    }
-                  />
+          {/* TAB 3: MY LISTINGS */}
+          {activeTab === "my-listings" && (
+            <div className="my-listings-container">
+              <div className="listings-header-bar">
+                <div className="section-header-title">
+                  <h2>My Campus Listings</h2>
+                  <p>Manage items you've posted for other students to buy</p>
                 </div>
-
-                {/* Live image preview */}
-                {newProduct.image && (
-                  <div className="image-preview-wrapper" style={{ marginTop: "10px" }}>
-                    <img src={newProduct.image} alt="Product Preview" />
-                    <button
-                      type="button"
-                      className="btn-remove-image"
-                      title="Remove image"
-                      onClick={() => setNewProduct({ ...newProduct, image: "" })}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ marginTop: "16px" }}>
-                <button type="submit" className="btn-primary" style={{ padding: "12px 28px", fontSize: "14px" }}>
-                  Publish to Student Store
+                <button
+                  type="button"
+                  className="btn-banner-primary"
+                  onClick={() => setIsSellModalOpen(true)}
+                >
+                  <PlusCircle size={16} />
+                  <span>Post New Listing</span>
                 </button>
               </div>
-            </form>
-          </div>
-        )}
 
-        {/* =========================================
-            4. SHOPPING CART VIEW (CUSTOMER ONLY)
-            ========================================= */}
-        {!isAdmin && activeTab === "cart" && (
-          <div className="store-container">
-            <div className="store-header">
-              <h2 className="store-title">Shopping Cart</h2>
+              {myListings.length === 0 ? (
+                <EmptyState
+                  icon={Tag}
+                  title="You haven't listed any items yet"
+                  description="Have extra textbooks, engineering tools, or room accessories? Post a listing to make cash and help peers on campus."
+                  actionLabel="Post Your First Listing"
+                  onAction={() => setIsSellModalOpen(true)}
+                  accentColor="indigo"
+                />
+              ) : (
+                <div className="listings-table-card">
+                  <table className="listings-table">
+                    <thead>
+                      <tr>
+                        <th>Item Details</th>
+                        <th>Category</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {myListings.map((item) => (
+                        <tr key={item.id || item._id}>
+                          <td>
+                            <div className="table-product-cell">
+                              <img
+                                src={item.image}
+                                alt={item.title}
+                                className="table-product-thumb"
+                              />
+                              <div className="table-product-info">
+                                <span className="table-product-title">{item.title}</span>
+                                <span className="table-product-cat">{item.condition || "Like New"} · {item.createdAt || "Recent"}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td>{item.category}</td>
+                          <td>
+                            <strong>₹{item.price}</strong>
+                          </td>
+                          <td>
+                            <span className="status-badge active">
+                              <CheckCircle2 size={12} /> Active
+                            </span>
+                          </td>
+                          <td>
+                            <div className="table-action-btns">
+                              <button
+                                type="button"
+                                className="table-btn-icon delete"
+                                onClick={() => handleDeleteListing(item.id || item._id)}
+                                title="Delete Listing"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 4: WISHLIST */}
+          {activeTab === "wishlist" && (
+            <div className="dashboard-section">
+              <div className="section-header-row">
+                <div className="section-header-title">
+                  <h2>My Wishlist ({wishlist.length})</h2>
+                  <p>Items you've bookmarked for later purchase</p>
+                </div>
+              </div>
+
+              {wishlist.length === 0 ? (
+                <EmptyState
+                  icon={Heart}
+                  title="Your wishlist is empty"
+                  description="Tap the heart icon on any campus item to save it here for later reference or price drops."
+                  actionLabel="Explore Marketplace"
+                  onAction={() => setActiveTab("view-products")}
+                  accentColor="rose"
+                />
+              ) : (
+                <div className="products-responsive-grid">
+                  {wishlist.map((prod) => (
+                    <ProductCard
+                      key={prod.id || prod._id}
+                      product={prod}
+                      onAddToCart={handleAddToCart}
+                      onViewDetails={setSelectedProductForDetail}
+                      onToggleWishlist={handleToggleWishlist}
+                      isWishlisted={true}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 5: MY ORDERS */}
+          {activeTab === "orders" && (
+            <div className="orders-page-container">
+              <div className="section-header-title">
+                <h2>My Campus Orders</h2>
+                <p>Track your orders and counter handover pickups</p>
+              </div>
+
+              {ordersLoading ? (
+                <div style={{ padding: 40, textAlign: "center" }}>
+                  <div className="btn-spinner" style={{ borderColor: "#cbd5e1", borderTopColor: "#4f46e5", margin: "0 auto 12px" }} />
+                  <p style={{ color: "#64748b" }}>Fetching your orders...</p>
+                </div>
+              ) : customerOrders.length === 0 ? (
+                <EmptyState
+                  icon={ShoppingBag}
+                  title="No orders placed yet"
+                  description="Browse the campus marketplace, add items to your cart, and place an order for zero-fee campus handover."
+                  actionLabel="Start Shopping"
+                  onAction={() => setActiveTab("view-products")}
+                  accentColor="indigo"
+                />
+              ) : (
+                <div className="orders-grid-list">
+                  {customerOrders.map((order, idx) => (
+                    <div key={order._id || idx} className="modern-order-card">
+                      <div className="order-card-header">
+                        <div className="order-header-left">
+                          <span className="order-id-tag">Order #{order.orderId || (order._id && order._id.slice(-6).toUpperCase())}</span>
+                          <span className="order-date-tag">
+                            {order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Today"}
+                          </span>
+                        </div>
+                        <span className={`status-badge ${order.orderStatus === "Completed" ? "active" : ""}`}>
+                          {order.orderStatus || "Pending Handover"}
+                        </span>
+                      </div>
+
+                      <div className="order-card-body">
+                        <div className="order-items-list">
+                          {(order.items || []).map((item, itemIdx) => (
+                            <div key={itemIdx} className="order-single-item">
+                              <div className="order-item-left">
+                                <img
+                                  src={item.image || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80"}
+                                  alt={item.title}
+                                  className="order-item-img"
+                                />
+                                <div className="order-item-details">
+                                  <span className="order-item-title">{item.title}</span>
+                                  <span className="order-item-qty">Qty: {item.quantity || 1} · {item.category || "General"}</span>
+                                </div>
+                              </div>
+                              <span className="order-item-price">₹{((item.price || 0) * (item.quantity || 1)).toLocaleString("en-IN")}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="order-card-footer">
+                        <div className="order-location-info">
+                          <MapPin size={15} style={{ color: "#4f46e5" }} />
+                          <span>Handover at: <strong>{order.deliveryLocation || "Campus Store Counter"}</strong></span>
+                        </div>
+                        <div className="order-total-amount">
+                          Total: ₹{Number(order.totalAmount || 0).toLocaleString("en-IN")}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 6: MESSAGES / CAMPUS CHAT */}
+          {activeTab === "messages" && (
+            <div className="dashboard-section">
+              <div className="section-header-title">
+                <h2>Campus Messages</h2>
+                <p>Chat directly with student sellers and buyers to arrange item viewings and campus handovers</p>
+              </div>
+
+              <ChatMessages currentUser={user} />
+            </div>
+          )}
+
+          {/* TAB 7: PROFILE */}
+          {activeTab === "profile" && (
+            <div className="profile-view-layout">
+              {/* Left: Student Digital ID Card Preview */}
+              <div className="student-card-preview">
+                <div className="student-card-glow" />
+
+                <div className="card-campus-badge">
+                  <span className="card-campus-name">StudentMart ID</span>
+                  <span className="card-verified-tag">
+                    <CheckCircle2 size={12} /> Verified Peer
+                  </span>
+                </div>
+
+                <div className="card-profile-header">
+                  <div className="card-avatar-huge">
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="card-user-titles">
+                    <h3>{displayName}</h3>
+                    <span className="card-usn-text">USN: {user?.usn || "1AT24CS151"}</span>
+                  </div>
+                </div>
+
+                <div className="card-details-grid">
+                  <div className="card-detail-item">
+                    <span className="detail-label-micro">Department</span>
+                    <span className="detail-value-micro">{user?.department || "CSE"}</span>
+                  </div>
+                  <div className="card-detail-item">
+                    <span className="detail-label-micro">Batch Year</span>
+                    <span className="detail-value-micro">{user?.year || "2026"}</span>
+                  </div>
+                  <div className="card-detail-item" style={{ gridColumn: "span 2" }}>
+                    <span className="detail-label-micro">Campus Address / Location</span>
+                    <span className="detail-value-micro">{user?.address || "Atria Institute of Technology, Bangalore"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Profile Details & Settings */}
+              <div className="profile-details-card">
+                <div className="profile-card-header">
+                  <div className="profile-card-title">
+                    <h3>Personal Academic Information</h3>
+                    <p>Details displayed on your campus listing receipts</p>
+                  </div>
+                </div>
+
+                <div className="profile-info-rows">
+                  <div className="info-field-box">
+                    <span className="field-title">Full Name</span>
+                    <span className="field-value">{displayName}</span>
+                  </div>
+                  <div className="info-field-box">
+                    <span className="field-title">Campus Email</span>
+                    <span className="field-value">{user?.email || "student@campus.edu"}</span>
+                  </div>
+                  <div className="info-field-box">
+                    <span className="field-title">Student Roll / USN</span>
+                    <span className="field-value">{user?.usn || "1AT24CS151"}</span>
+                  </div>
+                  <div className="info-field-box">
+                    <span className="field-title">Phone Number</span>
+                    <span className="field-value">{user?.phone || "+91 98765 43210"}</span>
+                  </div>
+                  <div className="info-field-box">
+                    <span className="field-title">Department / Stream</span>
+                    <span className="field-value">{user?.department || "Computer Science & Engineering"}</span>
+                  </div>
+                  <div className="info-field-box">
+                    <span className="field-title">Graduation Year</span>
+                    <span className="field-value">{user?.year || "2026"}</span>
+                  </div>
+                </div>
+
+                <div className="profile-action-buttons">
+                  <button
+                    type="button"
+                    className="btn-edit-profile"
+                    onClick={() => setIsEditProfileModalOpen(true)}
+                  >
+                    <Edit2 size={16} />
+                    <span>Edit Profile</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-change-password"
+                    onClick={() => setIsPasswordModalOpen(true)}
+                  >
+                    <Lock size={16} />
+                    <span>Change Password</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 8: SETTINGS */}
+          {activeTab === "settings" && (
+            <div className="dashboard-section" style={{ maxWidth: 800 }}>
+              <div className="section-header-title">
+                <h2>Account Settings & Preferences</h2>
+                <p>Customize your campus notification alerts and delivery preferences</p>
+              </div>
+
+              <div className="profile-details-card" style={{ gap: 20 }}>
+                <h4 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Campus Notification Alerts</h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+                    <div>
+                      <strong style={{ fontSize: 14 }}>New Campus Message Alerts</strong>
+                      <p style={{ fontSize: 12.5, color: "#64748b", margin: "2px 0 0" }}>Notify me when a peer messages regarding my listings</p>
+                    </div>
+                    <input type="checkbox" defaultChecked style={{ width: 18, height: 18, accentColor: "#4f46e5" }} />
+                  </label>
+
+                  <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+                    <div>
+                      <strong style={{ fontSize: 14 }}>Order Status & Handover Updates</strong>
+                      <p style={{ fontSize: 12.5, color: "#64748b", margin: "2px 0 0" }}>Receive alerts when orders are ready for pickup at store counter</p>
+                    </div>
+                    <input type="checkbox" defaultChecked style={{ width: 18, height: 18, accentColor: "#4f46e5" }} />
+                  </label>
+
+                  <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+                    <div>
+                      <strong style={{ fontSize: 14 }}>Price Drop Alerts on Wishlist</strong>
+                      <p style={{ fontSize: 12.5, color: "#64748b", margin: "2px 0 0" }}>Get notified when sellers discount saved items</p>
+                    </div>
+                    <input type="checkbox" defaultChecked style={{ width: 18, height: 18, accentColor: "#4f46e5" }} />
+                  </label>
+                </div>
+
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #e2e8f0" }}>
+                  <button
+                    type="button"
+                    className="btn-edit-profile"
+                    onClick={() => showToast("success", "Settings saved successfully!")}
+                  >
+                    Save Preferences
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* =========================================
+          PRODUCT DETAIL MODAL
+          ========================================= */}
+      {selectedProductForDetail && (
+        <ProductDetailModal
+          product={selectedProductForDetail}
+          onClose={() => setSelectedProductForDetail(null)}
+          onAddToCart={handleAddToCart}
+          onBuyNow={handleBuyNow}
+          onToggleWishlist={handleToggleWishlist}
+          isWishlisted={wishlist.some(
+            (w) => (w.id || w._id) === (selectedProductForDetail.id || selectedProductForDetail._id)
+          )}
+          onOpenMessage={() => {
+            setActiveTab("messages");
+          }}
+        />
+      )}
+
+      {/* =========================================
+          POST STUDENT LISTING MODAL
+          ========================================= */}
+      <SellModal
+        isOpen={isSellModalOpen}
+        onClose={() => setIsSellModalOpen(false)}
+        onAddListing={handleAddStudentListing}
+      />
+
+      {/* =========================================
+          SHOPPING CART SLIDE-OVER DRAWER
+          ========================================= */}
+      {isCartOpen && (
+        <div className="cart-drawer-overlay" onClick={() => setIsCartOpen(false)}>
+          <div className="cart-drawer-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="cart-drawer-header">
+              <div className="cart-header-title">
+                <ShoppingBag size={20} style={{ color: "#4f46e5" }} />
+                <h3>Your Cart ({cart.length})</h3>
+              </div>
               <button
                 type="button"
-                className="btn-secondary"
-                onClick={() => setActiveTab("view-products")}
+                className="modal-close-icon-btn"
+                style={{ position: "static" }}
+                onClick={() => setIsCartOpen(false)}
               >
-                ← Continue Shopping
+                <X size={18} />
               </button>
             </div>
 
-            <hr className="store-divider" />
-
             {cart.length === 0 ? (
-              <div className="store-empty-box">
-                <p>Your cart is empty. Explore products in the Student Store!</p>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <EmptyState
+                  icon={ShoppingBag}
+                  title="Your cart is empty"
+                  description="Explore textbooks, gadgets, and campus notes to add them to your cart."
+                  actionLabel="Browse Products"
+                  onAction={() => {
+                    setIsCartOpen(false);
+                    setActiveTab("view-products");
+                  }}
+                  accentColor="indigo"
+                />
               </div>
             ) : (
-              <div>
-                <div className="profile-details-list" style={{ marginBottom: "20px" }}>
-                  {cart.map((item, idx) => {
-                    const itemQty = item.quantity || 1;
-                    const itemPrice = Number(item.price) || 0;
-                    return (
-                      <div
-                        key={idx}
-                        className="profile-detail-row"
-                        style={{
-                          padding: "14px 0",
-                          borderBottom: "1px solid #f1f5f9",
-                          alignItems: "center",
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                          <img
-                            src={item.image || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=200&auto=format&fit=crop&q=60"}
-                            alt={item.title || item.name}
-                            style={{
-                              width: "52px",
-                              height: "52px",
-                              borderRadius: "10px",
-                              objectFit: "cover",
-                              border: "1px solid #e2e8f0",
-                            }}
-                          />
-                          <div>
-                            <strong style={{ display: "block", color: "#0f172a", fontSize: "14.5px" }}>
-                              {item.title || item.name}
-                            </strong>
-                            <span style={{ fontSize: "12px", color: "#64748b" }}>
-                              {item.category || "General"} · ₹{itemPrice} each
-                            </span>
-                          </div>
-                        </div>
+              <>
+                <div className="cart-items-body">
+                  {cart.map((item, idx) => (
+                    <div key={idx} className="cart-item-card">
+                      <img
+                        src={item.image || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80"}
+                        alt={item.title}
+                        className="cart-item-thumb"
+                      />
+                      <div className="cart-item-info">
+                        <span className="cart-item-title">{item.title}</span>
+                        <span className="cart-item-price">₹{Number(item.price).toLocaleString("en-IN")}</span>
 
-                        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                          {/* Quantity selector */}
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <div className="cart-qty-row">
+                          <div className="qty-controls">
                             <button
                               type="button"
-                              className="cart-qty-btn"
-                              title="Decrease quantity"
+                              className="qty-btn"
                               onClick={() => handleUpdateQuantity(idx, -1)}
                             >
                               -
                             </button>
-                            <span className="cart-qty-val">{itemQty}</span>
+                            <span className="qty-num">{item.quantity || 1}</span>
                             <button
                               type="button"
-                              className="cart-qty-btn"
-                              title="Increase quantity"
+                              className="qty-btn"
                               onClick={() => handleUpdateQuantity(idx, 1)}
                             >
                               +
                             </button>
                           </div>
 
-                          <strong style={{ color: "#4f46e5", fontSize: "16px", minWidth: "75px", textAlign: "right" }}>
-                            ₹{itemPrice * itemQty}
-                          </strong>
-
                           <button
                             type="button"
-                            style={{
-                              background: "transparent",
-                              border: "none",
-                              color: "#ef4444",
-                              cursor: "pointer",
-                              fontSize: "12px",
-                              fontWeight: "600",
-                              padding: "4px 8px",
-                            }}
+                            className="cart-item-remove-btn"
                             onClick={() => handleRemoveFromCart(idx)}
                           >
                             Remove
                           </button>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-
-                {/* Campus Delivery & Fulfillment Details */}
-                <div
-                  style={{
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "12px",
-                    padding: "16px 18px",
-                    marginBottom: "20px",
-                  }}
-                >
-                  <h4 style={{ margin: "0 0 12px 0", fontSize: "14px", color: "#0f172a", fontWeight: "700" }}>
-                    📍 Campus Pickup & Delivery Options
-                  </h4>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "12px" }}>
-                    <div className="form-group" style={{ marginBottom: "0" }}>
-                      <label style={{ fontSize: "12px" }}>Handover / Pickup Location</label>
-                      <select
-                        className="store-select"
-                        style={{ width: "100%", padding: "8px 12px", fontSize: "13px" }}
-                        value={deliveryLocation}
-                        onChange={(e) => setDeliveryLocation(e.target.value)}
-                      >
-                        <option value="Campus Store Main Counter / Direct Handover">Campus Store Main Counter / Direct Handover</option>
-                        <option value="Central Library Ground Floor">Central Library Ground Floor</option>
-                        <option value="College Canteen / Cafeteria">College Canteen / Cafeteria</option>
-                        <option value="Department Classroom Block">Department Classroom Block</option>
-                        <option value="Hostel Reception / Main Gate">Hostel Reception / Main Gate</option>
-                      </select>
                     </div>
-
-                    <div className="form-group" style={{ marginBottom: "0" }}>
-                      <label style={{ fontSize: "12px" }}>Order Notes / Contact Instructions (Optional)</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Call after 4:00 PM class, meet at Library table 4, etc."
-                        value={deliveryNotes}
-                        onChange={(e) => setDeliveryNotes(e.target.value)}
-                        style={{ fontSize: "13px", padding: "8px 12px" }}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: "12px", fontSize: "12px", color: "#64748b" }}>
-                    💳 <strong>Payment Method:</strong> Campus Cash on Delivery / UPI upon Handover
-                  </div>
+                  ))}
                 </div>
 
-                {/* Summary total */}
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "16px 0",
-                    borderTop: "2px solid #e2e8f0",
-                    marginBottom: "20px",
-                  }}
-                >
-                  <div>
-                    <span style={{ fontSize: "13px", color: "#64748b", display: "block" }}>
-                      Total ({cart.reduce((s, i) => s + (i.quantity || 1), 0)} items)
-                    </span>
-                    <strong style={{ fontSize: "20px", color: "#0f172a" }}>
-                      Order Total:
-                    </strong>
-                  </div>
-                  <strong style={{ fontSize: "24px", color: "#4f46e5" }}>
-                    ₹{cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 1), 0)}
-                  </strong>
-                </div>
-
-                <div style={{ display: "flex", gap: "12px" }}>
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    disabled={isPlacingOrder}
-                    onClick={handlePlaceCampusOrder}
-                    style={{ padding: "12px 28px", fontSize: "14.5px" }}
-                  >
-                    {isPlacingOrder ? "Placing Order..." : "Place Campus Order"}
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => {
-                      setCart([]);
-                      localStorage.setItem("studentmartCart", JSON.stringify([]));
-                    }}
-                  >
-                    Clear Cart
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* =========================================
-            5. MY ORDERS VIEW (CUSTOMER ONLY)
-            ========================================= */}
-        {!isAdmin && activeTab === "orders" && (
-          <div className="store-container">
-            <div className="store-header">
-              <div>
-                <h2 className="store-title">My Campus Orders</h2>
-                <p className="store-subtitle">Track your placed orders, campus pickup status, and order history</p>
-              </div>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={fetchCustomerOrders}
-                disabled={customerOrdersLoading}
-              >
-                {customerOrdersLoading ? "Refreshing..." : "🔄 Refresh Orders"}
-              </button>
-            </div>
-
-            <hr className="store-divider" />
-
-            {customerOrdersLoading ? (
-              <div className="store-empty-box">
-                <p>Loading your orders...</p>
-              </div>
-            ) : customerOrders.length === 0 ? (
-              <div className="store-empty-box">
-                <div style={{ fontSize: "36px", marginBottom: "8px" }}>📦</div>
-                <h3 style={{ margin: "0 0 6px 0", color: "#0f172a" }}>No orders placed yet</h3>
-                <p style={{ color: "#64748b", fontSize: "13.5px", marginBottom: "16px" }}>
-                  Browse through books, gadgets, stationery, and uniforms in the Student Store!
-                </p>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={() => setActiveTab("view-products")}
-                >
-                  Start Shopping
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                {customerOrders.map((order) => {
-                  const statusClass = (order.status || "Pending").toLowerCase().replace(/\s+/g, "-");
-                  return (
-                    <div key={order._id || order.orderId} className="customer-order-card">
-                      <div className="customer-order-header">
-                        <div>
-                          <span className="customer-order-id">Order #{order.orderId}</span>
-                          <span className="customer-order-date">
-                            {new Date(order.createdAt).toLocaleDateString("en-IN", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </div>
-                        <span className={`status-badge ${statusClass}`}>
-                          {order.status === "Pending" && "⏳ Pending"}
-                          {order.status === "Confirmed" && "✓ Confirmed"}
-                          {order.status === "Ready for Pickup" && "📦 Ready for Pickup"}
-                          {order.status === "Completed" && "🎉 Completed"}
-                          {order.status === "Cancelled" && "✕ Cancelled"}
-                        </span>
-                      </div>
-
-                      <div className="customer-order-items">
-                        {order.items &&
-                          order.items.map((item, iIdx) => (
-                            <div key={iIdx} className="customer-order-item-row">
-                              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                                {item.image ? (
-                                  <img
-                                    src={item.image}
-                                    alt={item.title}
-                                    style={{
-                                      width: "40px",
-                                      height: "40px",
-                                      borderRadius: "6px",
-                                      objectFit: "cover",
-                                    }}
-                                  />
-                                ) : (
-                                  <div
-                                    style={{
-                                      width: "40px",
-                                      height: "40px",
-                                      borderRadius: "6px",
-                                      background: "#f1f5f9",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      fontSize: "18px",
-                                    }}
-                                  >
-                                    🛍️
-                                  </div>
-                                )}
-                                <div>
-                                  <strong style={{ color: "#0f172a" }}>{item.title}</strong>
-                                  <span style={{ display: "block", fontSize: "12px", color: "#64748b" }}>
-                                    Qty: {item.quantity || 1} · ₹{item.price} each
-                                  </span>
-                                </div>
-                              </div>
-                              <strong style={{ color: "#334155" }}>
-                                ₹{(Number(item.price) || 0) * (item.quantity || 1)}
-                              </strong>
-                            </div>
-                          ))}
-                      </div>
-
-                      <div style={{ fontSize: "12.5px", color: "#64748b", margin: "10px 0" }}>
-                        📍 <strong>Handover Location:</strong> {order.deliveryLocation || "Campus Store Counter"}
-                        {order.deliveryNotes && (
-                          <span style={{ display: "block", marginTop: "2px", color: "#475569" }}>
-                            📝 Note: {order.deliveryNotes}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="customer-order-footer">
-                        <span>Payment: {order.paymentMethod || "Campus Handover"}</span>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <span>Total Amount:</span>
-                          <span className="customer-order-total">₹{order.totalAmount}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </main>
-
-      {/* =========================================
-          EDIT PRODUCT MODAL (ADMIN ONLY)
-          ========================================= */}
-      {isAdmin && editingProduct && (
-        <div
-          className="modal-backdrop"
-          onClick={() => setEditingProduct(null)}
-        >
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Edit Product</h3>
-            <form onSubmit={handleSaveEditProduct} className="modal-form">
-              <div className="form-group">
-                <label>Product Title *</label>
-                <input
-                  type="text"
-                  value={editingProduct.title}
-                  onChange={(e) =>
-                    setEditingProduct({ ...editingProduct, title: e.target.value })
-                  }
-                  required
-                />
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <div className="form-group">
-                  <label>Price (₹) *</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editingProduct.price}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, price: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Category *</label>
-                  <select
-                    className="store-select"
-                    style={{ width: "100%", padding: "9px 12px" }}
-                    value={editingProduct.category}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, category: e.target.value })
-                    }
-                  >
-                    <option value="Books">Books</option>
-                    <option value="Gadgets">Gadgets</option>
-                    <option value="College Bags">College Bags</option>
-                    <option value="Stationery">Stationery</option>
-                    <option value="Uniform">Uniform</option>
-                    <option value="Essentials">Essentials</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Description</label>
-                <textarea
-                  rows="3"
-                  value={editingProduct.desc}
-                  onChange={(e) =>
-                    setEditingProduct({ ...editingProduct, desc: e.target.value })
-                  }
-                />
-              </div>
-
-              {/* IMAGE SECTION */}
-              <div className="form-group">
-                <label>Product Image</label>
-
-                <div className="image-upload-zone">
-                  <input
-                    type="file"
-                    accept="image/png, image/jpeg, image/jpg"
-                    onChange={handleEditImageUpload}
-                  />
-                  <div className="upload-icon">📸</div>
-                  <p className="upload-text">Click to choose image file</p>
-                  <p className="upload-subtext">Supports PNG, JPG, JPEG from your device</p>
-                </div>
-
-                <div style={{ marginTop: "6px" }}>
-                  <input
-                    type="url"
-                    placeholder="Or paste an image web URL..."
-                    value={editingProduct.image.startsWith("data:") ? "" : editingProduct.image}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, image: e.target.value })
-                    }
-                  />
-                </div>
-
-                {editingProduct.image && (
-                  <div className="image-preview-wrapper" style={{ marginTop: "8px" }}>
-                    <img src={editingProduct.image} alt="Product Preview" />
-                    <button
-                      type="button"
-                      className="btn-remove-image"
-                      title="Remove image"
-                      onClick={() => setEditingProduct({ ...editingProduct, image: "" })}
+                <div className="cart-drawer-footer">
+                  <div className="cart-delivery-select">
+                    <label className="form-label" style={{ fontSize: 12.5 }}>Campus Handover Location</label>
+                    <select
+                      className="form-select"
+                      value={deliveryLocation}
+                      onChange={(e) => setDeliveryLocation(e.target.value)}
                     >
-                      ✕
-                    </button>
+                      <option value="Campus Store Main Counter / Direct Handover">Campus Store Main Counter</option>
+                      <option value="Central Library Ground Floor Entrance">Central Library Entrance</option>
+                      <option value="Hostel Block A / B Gate">Hostel Block Gate</option>
+                      <option value="Cafeteria Open Lounge">Cafeteria Open Lounge</option>
+                    </select>
                   </div>
-                )}
-              </div>
 
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => setEditingProduct(null)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Save Changes
-                </button>
-              </div>
-            </form>
+                  <div className="cart-subtotal-row">
+                    <span>Total Amount</span>
+                    <span className="subtotal-amount">₹{cartSubtotal.toLocaleString("en-IN")}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-checkout-order"
+                    onClick={handlePlaceCampusOrder}
+                    disabled={isPlacingOrder}
+                  >
+                    {isPlacingOrder ? (
+                      <div className="btn-spinner" />
+                    ) : (
+                      <>
+                        <span>Confirm Campus Order (COD / UPI)</span>
+                        <ArrowRight size={17} />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -1768,94 +1479,78 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
       {/* =========================================
           EDIT PROFILE MODAL
           ========================================= */}
-      {isEditModalOpen && (
-        <div className="modal-backdrop" onClick={() => setIsEditModalOpen(false)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Edit Profile Information</h3>
-            <form onSubmit={handleEditSubmit} className="modal-form">
+      {isEditProfileModalOpen && (
+        <div className="modal-backdrop" onClick={() => setIsEditProfileModalOpen(false)}>
+          <div className="sell-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-row">
+              <div>
+                <h3 className="modal-title">Edit Campus Profile</h3>
+                <p className="modal-subtitle">Update your contact information and department details.</p>
+              </div>
+              <button className="modal-close-icon-btn" onClick={() => setIsEditProfileModalOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditProfileSubmit} className="sell-modal-form">
               <div className="form-group">
-                <label>Name</label>
+                <label className="form-label">Full Name</label>
                 <input
                   type="text"
+                  className="form-input"
                   value={editForm.name}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, name: e.target.value })
-                  }
-                  placeholder="e.g. feb"
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                   required
                 />
               </div>
 
-              <div className="form-group">
-                <label>Email</label>
-                <input
-                  type="email"
-                  value={editForm.email}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, email: e.target.value })
-                  }
-                  placeholder="e.g. feb@gmail.com"
-                  required
-                />
+              <div className="form-row-2">
+                <div className="form-group">
+                  <label className="form-label">Phone Number</label>
+                  <input
+                    type="tel"
+                    className="form-input"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Department / Branch</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editForm.department}
+                    onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                  />
+                </div>
               </div>
 
-              <div className="form-group">
-                <label>Phone</label>
-                <input
-                  type="text"
-                  value={editForm.phone}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, phone: e.target.value })
-                  }
-                  placeholder="e.g. 1234567890"
-                />
+              <div className="form-row-2">
+                <div className="form-group">
+                  <label className="form-label">Academic Year / Sem</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editForm.year}
+                    onChange={(e) => setEditForm({ ...editForm, year: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Campus Address / College</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editForm.address}
+                    onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                  />
+                </div>
               </div>
 
-              <div className="form-group">
-                <label>Department</label>
-                <input
-                  type="text"
-                  value={editForm.department}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, department: e.target.value })
-                  }
-                  placeholder="e.g. CSE"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Year</label>
-                <input
-                  type="text"
-                  value={editForm.year}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, year: e.target.value })
-                  }
-                  placeholder="e.g. 2026"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Address</label>
-                <input
-                  type="text"
-                  value={editForm.address}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, address: e.target.value })
-                  }
-                  placeholder="e.g. Bangalore, Karnataka"
-                />
-              </div>
-
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => setIsEditModalOpen(false)}
-                >
+              <div className="modal-actions-row">
+                <button type="button" className="btn-cancel" onClick={() => setIsEditProfileModalOpen(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary">
+                <button type="submit" className="btn-submit-primary">
                   Save Changes
                 </button>
               </div>
@@ -1869,55 +1564,65 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
           ========================================= */}
       {isPasswordModalOpen && (
         <div className="modal-backdrop" onClick={() => setIsPasswordModalOpen(false)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Change Password</h3>
-            <form onSubmit={handlePasswordSubmit} className="modal-form">
+          <div className="sell-modal-card" style={{ maxWidth: 460 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-row">
+              <div>
+                <h3 className="modal-title">Change Password</h3>
+                <p className="modal-subtitle">Enter your current password and pick a new one.</p>
+              </div>
+              <button className="modal-close-icon-btn" onClick={() => setIsPasswordModalOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handlePasswordSubmit} className="sell-modal-form">
               <div className="form-group">
-                <label>Current Password</label>
+                <label className="form-label">Current Password</label>
                 <input
                   type="password"
+                  className="form-input"
                   value={passwordForm.currentPassword}
-                  onChange={(e) =>
-                    setPasswordForm({
-                      ...passwordForm,
-                      currentPassword: e.target.value,
-                    })
-                  }
-                  placeholder="Enter current password"
+                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label>New Password</label>
+                <label className="form-label">New Password (Min 6 chars)</label>
                 <input
                   type="password"
+                  className="form-input"
                   value={passwordForm.newPassword}
-                  onChange={(e) =>
-                    setPasswordForm({
-                      ...passwordForm,
-                      newPassword: e.target.value,
-                    })
-                  }
-                  placeholder="At least 6 characters"
+                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                  minLength={6}
                   required
                 />
               </div>
 
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => setIsPasswordModalOpen(false)}
-                >
+              <div className="modal-actions-row">
+                <button type="button" className="btn-cancel" onClick={() => setIsPasswordModalOpen(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary">
+                <button type="submit" className="btn-submit-primary">
                   Update Password
                 </button>
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* =========================================
+          FLOATING TOAST NOTIFICATION
+          ========================================= */}
+      {toastMessage && (
+        <div className={`toast-floating-banner ${toastMessage.type}`}>
+          {toastMessage.type === "success" ? (
+            <CheckCircle2 size={18} />
+          ) : (
+            <AlertCircle size={18} />
+          )}
+          <span>{toastMessage.text}</span>
         </div>
       )}
     </div>

@@ -3,7 +3,8 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
-require("dotenv").config();
+require("dotenv").config({ path: path.join(__dirname, ".env") });
+require("dotenv").config(); // fallback to process.cwd() .env if present
 
 const app = express();
 
@@ -13,8 +14,13 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Enable CORS for all requests
-app.use(cors());
+// Enable CORS for all incoming requests (Vite dev server, localhost, 127.0.0.1)
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
 
 // Support large Base64 image payloads up to 50MB
 app.use(express.json({ limit: "50mb" }));
@@ -35,6 +41,10 @@ app.use("/api/auth", require("./routes/authRoutes"));
 const productRouter = require("./routes/productRoutes");
 app.use("/api/products", productRouter);
 app.use("/api/admin/products", productRouter);
+
+// Order routes (Customer orders and Admin order management)
+const orderRouter = require("./routes/orderRoutes");
+app.use("/api/orders", orderRouter);
 
 // Catch-all 404 handler for all unmatched API endpoints (ALWAYS JSON, never HTML)
 app.use("/api", (req, res) => {
@@ -61,7 +71,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 async function startServer() {
   try {
@@ -76,7 +86,7 @@ async function startServer() {
     await mongoose.connect(process.env.MONGO_URI);
     console.log("MongoDB connected");
 
-    app.listen(PORT, () => {
+    app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running at http://localhost:${PORT}`);
     });
   } catch (error) {

@@ -108,6 +108,13 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
     }
   });
 
+  // Orders state
+  const [customerOrders, setCustomerOrders] = useState([]);
+  const [customerOrdersLoading, setCustomerOrdersLoading] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [deliveryLocation, setDeliveryLocation] = useState("Campus Store Main Counter / Direct Handover");
+  const [deliveryNotes, setDeliveryNotes] = useState("");
+
   // Add Product form state
   const [newProduct, setNewProduct] = useState({
     title: "",
@@ -133,8 +140,34 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
     }
   };
 
+  // Fetch customer orders from backend
+  const fetchCustomerOrders = async () => {
+    const token = localStorage.getItem("studentmartToken");
+    if (!token) return;
+    try {
+      setCustomerOrdersLoading(true);
+      const res = await fetch(`${API_BASE_URL}/orders/my-orders`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.orders && Array.isArray(data.orders)) {
+          setCustomerOrders(data.orders);
+        }
+      }
+    } catch (err) {
+      console.warn("Could not fetch customer orders:", err);
+    } finally {
+      setCustomerOrdersLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
+    fetchCustomerOrders();
   }, []);
 
   // Fetch current user profile
@@ -394,7 +427,7 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
             throw new Error("Access denied. Admin privileges required.");
           }
           if (res.status === 404) {
-            throw new Error("Cannot reach backend API (404). Please ensure backend server is running on port 5000.");
+            throw new Error("Cannot reach backend API (404). Please ensure backend server is running on port 5001.");
           }
           throw new Error(`Server returned HTTP ${res.status}: ${res.statusText || "Unexpected response"}`);
         }
@@ -524,13 +557,26 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
     }
   };
 
-  // Add to Cart Handler (Customer only)
+  // Add to Cart Handler (Customer only) with quantity support
   const addToCart = (product) => {
     if (isAdmin) {
       setAlertMessage({ type: "error", text: "Administrators cannot add items to cart." });
       return;
     }
-    const updated = [...cart, product];
+    const prodId = product._id || product.id;
+    const existingIndex = cart.findIndex((item) => (item._id || item.id) === prodId);
+
+    let updated;
+    if (existingIndex > -1) {
+      updated = [...cart];
+      updated[existingIndex] = {
+        ...updated[existingIndex],
+        quantity: (updated[existingIndex].quantity || 1) + 1,
+      };
+    } else {
+      updated = [...cart, { ...product, quantity: 1 }];
+    }
+
     setCart(updated);
     try {
       localStorage.setItem("studentmartCart", JSON.stringify(updated));
@@ -538,6 +584,114 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
       console.warn("Storage error", err);
     }
     setAlertMessage({ type: "success", text: `Added "${product.title}" to cart!` });
+  };
+
+  // Update item quantity in cart
+  const handleUpdateQuantity = (idx, delta) => {
+    const newCart = [...cart];
+    const currentQty = newCart[idx].quantity || 1;
+    const newQty = currentQty + delta;
+
+    if (newQty <= 0) {
+      newCart.splice(idx, 1);
+    } else {
+      newCart[idx] = { ...newCart[idx], quantity: newQty };
+    }
+
+    setCart(newCart);
+    try {
+      localStorage.setItem("studentmartCart", JSON.stringify(newCart));
+    } catch (err) {
+      console.warn("Storage error", err);
+    }
+  };
+
+  // Remove single item from cart
+  const handleRemoveFromCart = (idx) => {
+    const newCart = [...cart];
+    newCart.splice(idx, 1);
+    setCart(newCart);
+    try {
+      localStorage.setItem("studentmartCart", JSON.stringify(newCart));
+    } catch (err) {
+      console.warn("Storage error", err);
+    }
+  };
+
+  // Place Campus Order (Sends real order to backend API)
+  const handlePlaceCampusOrder = async () => {
+    if (cart.length === 0) {
+      setAlertMessage({ type: "error", text: "Your shopping cart is empty." });
+      return;
+    }
+
+    const token = localStorage.getItem("studentmartToken");
+    if (!token) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    setIsPlacingOrder(true);
+    setAlertMessage({ type: "", text: "" });
+
+    try {
+      const computedTotal = cart.reduce(
+        (sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 1),
+        0
+      );
+
+      const payload = {
+        items: cart.map((item) => ({
+          productId: item._id || item.id,
+          title: item.title || item.name,
+          price: Number(item.price),
+          quantity: item.quantity || 1,
+          image: item.image || "",
+          category: item.category || "General",
+        })),
+        totalAmount: computedTotal,
+        deliveryLocation,
+        deliveryNotes,
+        paymentMethod: "Campus Cash on Delivery (COD) / UPI on Handover",
+      };
+
+      const res = await fetch(`${API_BASE_URL}/orders`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to place order.");
+      }
+
+      // Order successfully placed!
+      setCart([]);
+      localStorage.setItem("studentmartCart", JSON.stringify([]));
+      setDeliveryNotes("");
+
+      setAlertMessage({
+        type: "success",
+        text: `🎉 Order #${data.order?.orderId || ""} placed successfully! It is now visible in the Campus Store Admin panel.`,
+      });
+
+      // Fetch customer orders and navigate to "orders" tab
+      await fetchCustomerOrders();
+      setActiveTab("orders");
+    } catch (err) {
+      console.error("Order placement error:", err);
+      setAlertMessage({
+        type: "error",
+        text: err.message || "Failed to place order. Please try again.",
+      });
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
 
   // Filter & Sort Logic
@@ -671,7 +825,28 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
                   <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
                 </svg>
               </span>
-              Shopping Cart {cart.length > 0 && `(${cart.length})`}
+              Shopping Cart {cart.length > 0 && `(${cart.reduce((sum, item) => sum + (item.quantity || 1), 0)})`}
+            </button>
+          )}
+
+          {/* 5. My Orders (Customer ONLY) */}
+          {!isAdmin && (
+            <button
+              type="button"
+              className={`sidebar-item ${activeTab === "orders" ? "active" : ""}`}
+              onClick={() => {
+                setActiveTab("orders");
+                fetchCustomerOrders();
+              }}
+            >
+              <span className="sidebar-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <path d="M16 10a4 4 0 0 1-8 0" />
+                </svg>
+              </span>
+              My Orders {customerOrders.length > 0 && `(${customerOrders.length})`}
             </button>
           )}
         </nav>
@@ -1141,93 +1316,170 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
               </div>
             ) : (
               <div>
-                <div className="profile-details-list" style={{ marginBottom: "24px" }}>
-                  {cart.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="profile-detail-row"
-                      style={{
-                        padding: "12px 0",
-                        borderBottom: "1px solid #f1f5f9",
-                        alignItems: "center",
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        <img
-                          src={item.image}
-                          alt={item.title || item.name}
-                          style={{
-                            width: "48px",
-                            height: "48px",
-                            borderRadius: "8px",
-                            objectFit: "cover",
-                          }}
-                        />
-                        <div>
-                          <strong style={{ display: "block", color: "#0f172a" }}>
-                            {item.title || item.name}
+                <div className="profile-details-list" style={{ marginBottom: "20px" }}>
+                  {cart.map((item, idx) => {
+                    const itemQty = item.quantity || 1;
+                    const itemPrice = Number(item.price) || 0;
+                    return (
+                      <div
+                        key={idx}
+                        className="profile-detail-row"
+                        style={{
+                          padding: "14px 0",
+                          borderBottom: "1px solid #f1f5f9",
+                          alignItems: "center",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                          <img
+                            src={item.image || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=200&auto=format&fit=crop&q=60"}
+                            alt={item.title || item.name}
+                            style={{
+                              width: "52px",
+                              height: "52px",
+                              borderRadius: "10px",
+                              objectFit: "cover",
+                              border: "1px solid #e2e8f0",
+                            }}
+                          />
+                          <div>
+                            <strong style={{ display: "block", color: "#0f172a", fontSize: "14.5px" }}>
+                              {item.title || item.name}
+                            </strong>
+                            <span style={{ fontSize: "12px", color: "#64748b" }}>
+                              {item.category || "General"} · ₹{itemPrice} each
+                            </span>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                          {/* Quantity selector */}
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <button
+                              type="button"
+                              className="cart-qty-btn"
+                              title="Decrease quantity"
+                              onClick={() => handleUpdateQuantity(idx, -1)}
+                            >
+                              -
+                            </button>
+                            <span className="cart-qty-val">{itemQty}</span>
+                            <button
+                              type="button"
+                              className="cart-qty-btn"
+                              title="Increase quantity"
+                              onClick={() => handleUpdateQuantity(idx, 1)}
+                            >
+                              +
+                            </button>
+                          </div>
+
+                          <strong style={{ color: "#4f46e5", fontSize: "16px", minWidth: "75px", textAlign: "right" }}>
+                            ₹{itemPrice * itemQty}
                           </strong>
-                          <span style={{ fontSize: "12px", color: "#64748b" }}>
-                            {item.category}
-                          </span>
+
+                          <button
+                            type="button"
+                            style={{
+                              background: "transparent",
+                              border: "none",
+                              color: "#ef4444",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                              fontWeight: "600",
+                              padding: "4px 8px",
+                            }}
+                            onClick={() => handleRemoveFromCart(idx)}
+                          >
+                            Remove
+                          </button>
                         </div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                        <strong style={{ color: "#4f46e5", fontSize: "16px" }}>
-                          ₹{item.price}
-                        </strong>
-                        <button
-                          type="button"
-                          style={{
-                            background: "transparent",
-                            border: "none",
-                            color: "#ef4444",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                            fontWeight: "600",
-                          }}
-                          onClick={() => {
-                            const newCart = [...cart];
-                            newCart.splice(idx, 1);
-                            setCart(newCart);
-                            localStorage.setItem("studentmartCart", JSON.stringify(newCart));
-                          }}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
+                </div>
 
-                  <div
-                    className="profile-detail-row"
-                    style={{
-                      paddingTop: "16px",
-                      fontSize: "17px",
-                      fontWeight: "750",
-                    }}
-                  >
-                    <span>Total Amount:</span>
-                    <span style={{ color: "#0f172a" }}>
-                      ₹{cart.reduce((sum, item) => sum + item.price, 0)}
-                    </span>
+                {/* Campus Delivery & Fulfillment Details */}
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "12px",
+                    padding: "16px 18px",
+                    marginBottom: "20px",
+                  }}
+                >
+                  <h4 style={{ margin: "0 0 12px 0", fontSize: "14px", color: "#0f172a", fontWeight: "700" }}>
+                    📍 Campus Pickup & Delivery Options
+                  </h4>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "12px" }}>
+                    <div className="form-group" style={{ marginBottom: "0" }}>
+                      <label style={{ fontSize: "12px" }}>Handover / Pickup Location</label>
+                      <select
+                        className="store-select"
+                        style={{ width: "100%", padding: "8px 12px", fontSize: "13px" }}
+                        value={deliveryLocation}
+                        onChange={(e) => setDeliveryLocation(e.target.value)}
+                      >
+                        <option value="Campus Store Main Counter / Direct Handover">Campus Store Main Counter / Direct Handover</option>
+                        <option value="Central Library Ground Floor">Central Library Ground Floor</option>
+                        <option value="College Canteen / Cafeteria">College Canteen / Cafeteria</option>
+                        <option value="Department Classroom Block">Department Classroom Block</option>
+                        <option value="Hostel Reception / Main Gate">Hostel Reception / Main Gate</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: "0" }}>
+                      <label style={{ fontSize: "12px" }}>Order Notes / Contact Instructions (Optional)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Call after 4:00 PM class, meet at Library table 4, etc."
+                        value={deliveryNotes}
+                        onChange={(e) => setDeliveryNotes(e.target.value)}
+                        style={{ fontSize: "13px", padding: "8px 12px" }}
+                      />
+                    </div>
                   </div>
+
+                  <div style={{ marginTop: "12px", fontSize: "12px", color: "#64748b" }}>
+                    💳 <strong>Payment Method:</strong> Campus Cash on Delivery / UPI upon Handover
+                  </div>
+                </div>
+
+                {/* Summary total */}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "16px 0",
+                    borderTop: "2px solid #e2e8f0",
+                    marginBottom: "20px",
+                  }}
+                >
+                  <div>
+                    <span style={{ fontSize: "13px", color: "#64748b", display: "block" }}>
+                      Total ({cart.reduce((s, i) => s + (i.quantity || 1), 0)} items)
+                    </span>
+                    <strong style={{ fontSize: "20px", color: "#0f172a" }}>
+                      Order Total:
+                    </strong>
+                  </div>
+                  <strong style={{ fontSize: "24px", color: "#4f46e5" }}>
+                    ₹{cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 1), 0)}
+                  </strong>
                 </div>
 
                 <div style={{ display: "flex", gap: "12px" }}>
                   <button
                     type="button"
                     className="btn-primary"
-                    onClick={() => {
-                      setCart([]);
-                      localStorage.setItem("studentmartCart", JSON.stringify([]));
-                      setAlertMessage({
-                        type: "success",
-                        text: "Order placed successfully! Connect with the student seller on campus.",
-                      });
-                    }}
+                    disabled={isPlacingOrder}
+                    onClick={handlePlaceCampusOrder}
+                    style={{ padding: "12px 28px", fontSize: "14.5px" }}
                   >
-                    Place Campus Order
+                    {isPlacingOrder ? "Placing Order..." : "Place Campus Order"}
                   </button>
 
                   <button
@@ -1241,6 +1493,145 @@ export default function Dashboard({ role: propRole, initialTab = "profile" }) {
                     Clear Cart
                   </button>
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* =========================================
+            5. MY ORDERS VIEW (CUSTOMER ONLY)
+            ========================================= */}
+        {!isAdmin && activeTab === "orders" && (
+          <div className="store-container">
+            <div className="store-header">
+              <div>
+                <h2 className="store-title">My Campus Orders</h2>
+                <p className="store-subtitle">Track your placed orders, campus pickup status, and order history</p>
+              </div>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={fetchCustomerOrders}
+                disabled={customerOrdersLoading}
+              >
+                {customerOrdersLoading ? "Refreshing..." : "🔄 Refresh Orders"}
+              </button>
+            </div>
+
+            <hr className="store-divider" />
+
+            {customerOrdersLoading ? (
+              <div className="store-empty-box">
+                <p>Loading your orders...</p>
+              </div>
+            ) : customerOrders.length === 0 ? (
+              <div className="store-empty-box">
+                <div style={{ fontSize: "36px", marginBottom: "8px" }}>📦</div>
+                <h3 style={{ margin: "0 0 6px 0", color: "#0f172a" }}>No orders placed yet</h3>
+                <p style={{ color: "#64748b", fontSize: "13.5px", marginBottom: "16px" }}>
+                  Browse through books, gadgets, stationery, and uniforms in the Student Store!
+                </p>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => setActiveTab("view-products")}
+                >
+                  Start Shopping
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                {customerOrders.map((order) => {
+                  const statusClass = (order.status || "Pending").toLowerCase().replace(/\s+/g, "-");
+                  return (
+                    <div key={order._id || order.orderId} className="customer-order-card">
+                      <div className="customer-order-header">
+                        <div>
+                          <span className="customer-order-id">Order #{order.orderId}</span>
+                          <span className="customer-order-date">
+                            {new Date(order.createdAt).toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        <span className={`status-badge ${statusClass}`}>
+                          {order.status === "Pending" && "⏳ Pending"}
+                          {order.status === "Confirmed" && "✓ Confirmed"}
+                          {order.status === "Ready for Pickup" && "📦 Ready for Pickup"}
+                          {order.status === "Completed" && "🎉 Completed"}
+                          {order.status === "Cancelled" && "✕ Cancelled"}
+                        </span>
+                      </div>
+
+                      <div className="customer-order-items">
+                        {order.items &&
+                          order.items.map((item, iIdx) => (
+                            <div key={iIdx} className="customer-order-item-row">
+                              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                {item.image ? (
+                                  <img
+                                    src={item.image}
+                                    alt={item.title}
+                                    style={{
+                                      width: "40px",
+                                      height: "40px",
+                                      borderRadius: "6px",
+                                      objectFit: "cover",
+                                    }}
+                                  />
+                                ) : (
+                                  <div
+                                    style={{
+                                      width: "40px",
+                                      height: "40px",
+                                      borderRadius: "6px",
+                                      background: "#f1f5f9",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      fontSize: "18px",
+                                    }}
+                                  >
+                                    🛍️
+                                  </div>
+                                )}
+                                <div>
+                                  <strong style={{ color: "#0f172a" }}>{item.title}</strong>
+                                  <span style={{ display: "block", fontSize: "12px", color: "#64748b" }}>
+                                    Qty: {item.quantity || 1} · ₹{item.price} each
+                                  </span>
+                                </div>
+                              </div>
+                              <strong style={{ color: "#334155" }}>
+                                ₹{(Number(item.price) || 0) * (item.quantity || 1)}
+                              </strong>
+                            </div>
+                          ))}
+                      </div>
+
+                      <div style={{ fontSize: "12.5px", color: "#64748b", margin: "10px 0" }}>
+                        📍 <strong>Handover Location:</strong> {order.deliveryLocation || "Campus Store Counter"}
+                        {order.deliveryNotes && (
+                          <span style={{ display: "block", marginTop: "2px", color: "#475569" }}>
+                            📝 Note: {order.deliveryNotes}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="customer-order-footer">
+                        <span>Payment: {order.paymentMethod || "Campus Handover"}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span>Total Amount:</span>
+                          <span className="customer-order-total">₹{order.totalAmount}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

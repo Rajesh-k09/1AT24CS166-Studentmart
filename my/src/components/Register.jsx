@@ -48,14 +48,21 @@ function Register() {
         }
       );
 
+      let data = {};
       const contentType = response.headers.get("content-type");
-      const data =
-        contentType && contentType.includes("application/json")
-          ? await response.json()
-          : {};
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error("Non-JSON register response:", response.status, text);
+        if (text.includes("ECONNREFUSED") || response.status === 502 || response.status === 504) {
+          throw new Error("Cannot connect to backend server. Please verify backend is running on port 5001.");
+        }
+        throw new Error(`Server returned error status ${response.status}`);
+      }
 
       if (!response.ok) {
-        throw new Error(data.message || "Registration failed. Server returned an error.");
+        throw new Error(data.message || `Registration failed (HTTP ${response.status}).`);
       }
 
       const roleLabel = form.role === "admin" ? "Store Administrator" : "Student";
@@ -74,7 +81,9 @@ function Register() {
     } catch (error) {
       console.error("Registration error:", error);
       setMessage(
-        error.message || "Unable to connect to the server."
+        error.message === "Failed to fetch"
+          ? "Cannot connect to backend server. Please make sure the backend is started (node server/server.js)."
+          : error.message || "Unable to connect to the server."
       );
       setMessageType("error");
     } finally {

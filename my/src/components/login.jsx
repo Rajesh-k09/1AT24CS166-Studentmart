@@ -33,11 +33,18 @@ function Login() {
         }
       );
 
+      let data = {};
       const contentType = response.headers.get("content-type");
-      const data =
-        contentType && contentType.includes("application/json")
-          ? await response.json()
-          : {};
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error("Non-JSON login response:", response.status, text);
+        if (text.includes("ECONNREFUSED") || response.status === 502 || response.status === 504) {
+          throw new Error("Cannot connect to backend server. Please verify backend is running on port 5001.");
+        }
+        throw new Error(`Server returned error status ${response.status}`);
+      }
 
       if (!response.ok) {
         throw new Error(
@@ -49,9 +56,11 @@ function Login() {
         throw new Error("The server did not return a login token.");
       }
 
-      // Determine the resolved role
+      // Determine the resolved role:
+      // If the user selected the Student tab, effectiveRole MUST be "customer".
+      // If the user selected the Store Admin tab and authenticated as admin, effectiveRole is "admin".
       const effectiveRole =
-        role === "admin" || data.user?.role === "admin"
+        role === "admin" && data.user?.role === "admin"
           ? "admin"
           : "customer";
 
@@ -72,7 +81,11 @@ function Login() {
       }
     } catch (error) {
       console.error("Login error:", error);
-      setMessage(error.message || "Unable to connect to the server.");
+      setMessage(
+        error.message === "Failed to fetch"
+          ? "Cannot connect to backend server. Please make sure the backend is started (node server/server.js)."
+          : error.message || "Unable to connect to the server."
+      );
     } finally {
       setLoading(false);
     }

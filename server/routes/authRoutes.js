@@ -76,13 +76,14 @@ router.post("/register", async (req, res) => {
       10
     );
 
+    const requestedRole = (role || "").trim().toLowerCase();
     const isExplicitAdmin =
-      role === "admin" ||
+      requestedRole === "admin" ||
       cleanUSN.startsWith("ADM") ||
-      cleanUSN.startsWith("AM") ||
-      cleanEmail.includes("admin");
+      cleanUSN.startsWith("ADMIN") ||
+      cleanEmail === "admin@studentmart.com";
 
-    const userRole = isExplicitAdmin ? "admin" : (role || "customer");
+    const userRole = isExplicitAdmin ? "admin" : "customer";
 
     const user = new User({
       usn: cleanUSN,
@@ -152,22 +153,33 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    let userRole = user.role || "customer";
+    // Determine the user's account role in database
+    const dbRole = user.role || "customer";
+    const requestedTab = (role || "").trim().toLowerCase();
 
-    // If user explicitly signs in through the Admin tab, or is already admin in DB,
-    // or their USN indicates admin (e.g. starts with ADM / ADMIN / AM)
-    if (
-      role === "admin" ||
-      user.role === "admin" ||
-      (user.usn && (user.usn.startsWith("ADM") || user.usn.startsWith("AM"))) ||
-      cleanEmail.includes("admin")
-    ) {
+    let userRole = dbRole;
+
+    if (requestedTab === "admin") {
+      // User is attempting to log into Store Admin portal
+      const hasAdminPrivilege =
+        dbRole === "admin" ||
+        (user.usn && (user.usn.startsWith("ADM") || user.usn.startsWith("ADMIN"))) ||
+        cleanEmail === "admin@studentmart.com";
+
+      if (!hasAdminPrivilege) {
+        return res.status(403).json({
+          message: "Access denied. This is a Student account. Please switch to the 'Student' tab to sign in.",
+        });
+      }
+
       userRole = "admin";
       if (user.role !== "admin") {
         user.role = "admin";
         await user.save();
       }
-    } else if (role === "customer" && user.role !== "admin") {
+    } else {
+      // User is logging in via "Student" tab (role === "customer" or default)
+      // Always treat active session as student/customer
       userRole = "customer";
     }
 

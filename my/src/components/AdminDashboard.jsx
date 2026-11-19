@@ -16,6 +16,20 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
+  // Orders State
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderStatusFilter, setOrderStatusFilter] = useState("All");
+  const [orderSearch, setOrderSearch] = useState("");
+  const [orderStats, setOrderStats] = useState({
+    totalOrders: 0,
+    pendingOrders: 0,
+    readyOrders: 0,
+    completedOrders: 0,
+    cancelledOrders: 0,
+    totalRevenue: 0,
+  });
+
   // Modals
   const [editingProduct, setEditingProduct] = useState(null);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
@@ -94,6 +108,23 @@ export default function AdminDashboard() {
             localStorage.setItem("studentmartProducts", JSON.stringify(pData.products));
           }
         }
+
+        // Fetch orders
+        const ordersRes = await fetch(`${API_BASE_URL}/orders`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        if (ordersRes.ok) {
+          const oData = await ordersRes.json();
+          if (oData.orders && Array.isArray(oData.orders)) {
+            setOrders(oData.orders);
+          }
+          if (oData.stats) {
+            setOrderStats(oData.stats);
+          }
+        }
       } catch (err) {
         console.error("Admin initialization error:", err);
       } finally {
@@ -103,6 +134,106 @@ export default function AdminDashboard() {
 
     init();
   }, [navigate]);
+
+  // Fetch orders helper
+  const fetchOrders = async () => {
+    const token = localStorage.getItem("studentmartToken");
+    if (!token) return;
+
+    try {
+      setOrdersLoading(true);
+      const res = await fetch(`${API_BASE_URL}/orders`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.orders && Array.isArray(data.orders)) {
+          setOrders(data.orders);
+        }
+        if (data.stats) {
+          setOrderStats(data.stats);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch orders:", err);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  // Re-fetch orders when switching to orders tab
+  useEffect(() => {
+    if (activeTab === "orders") {
+      fetchOrders();
+    }
+  }, [activeTab]);
+
+  // Update order status (Admin)
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    const token = localStorage.getItem("studentmartToken");
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to update order status.");
+      }
+
+      setAlertMessage({ type: "success", text: data.message });
+      setOrders((prev) =>
+        prev.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o))
+      );
+      fetchOrders();
+    } catch (err) {
+      setAlertMessage({ type: "error", text: err.message });
+    }
+  };
+
+  // Delete order (Admin)
+  const handleDeleteOrder = async (orderId, orderNum) => {
+    if (!window.confirm(`Are you sure you want to delete order #${orderNum}?`)) {
+      return;
+    }
+
+    const token = localStorage.getItem("studentmartToken");
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to delete order.");
+      }
+
+      setAlertMessage({ type: "success", text: data.message });
+      setOrders((prev) => prev.filter((o) => o._id !== orderId));
+      fetchOrders();
+    } catch (err) {
+      setAlertMessage({ type: "error", text: err.message });
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("studentmartToken");
@@ -218,7 +349,7 @@ export default function AdminDashboard() {
             throw new Error("Access denied. Admin privileges required.");
           }
           if (res.status === 404) {
-            throw new Error("Cannot reach backend API (404). Please ensure backend server is running on port 5000.");
+            throw new Error("Cannot reach backend API (404). Please ensure backend server is running on port 5001.");
           }
           throw new Error(`Server returned HTTP ${res.status}: ${res.statusText || "Unexpected response"}`);
         }
@@ -837,62 +968,323 @@ export default function AdminDashboard() {
         )}
 
         {/* =========================================
-            TAB 3: MANAGE ORDERS
+            TAB 3: MANAGE ORDERS (REAL-TIME E-COMMERCE)
             ========================================= */}
         {activeTab === "orders" && (
-          <div className="admin-card-section" style={{ maxWidth: "800px" }}>
-            <div className="admin-section-header">
-              <h2 className="admin-section-title">Campus Store Orders</h2>
-              <span className="admin-role-badge">Orders Overview</span>
+          <div className="admin-orders-container">
+            {/* Header */}
+            <div className="admin-header" style={{ marginBottom: "16px" }}>
+              <div>
+                <h1 className="admin-header-title">Campus Store Orders</h1>
+                <p className="admin-header-subtitle">
+                  Review student orders, confirm item fulfillments, and track campus pickups
+                </p>
+              </div>
+              <button
+                type="button"
+                className="admin-btn-back"
+                onClick={fetchOrders}
+                disabled={ordersLoading}
+                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px" }}
+              >
+                <span>🔄</span> {ordersLoading ? "Refreshing..." : "Refresh Orders"}
+              </button>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              <div
-                style={{
-                  padding: "16px",
-                  background: "#f8fafc",
-                  borderRadius: "10px",
-                  border: "1px solid #e2e8f0",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <div>
-                  <strong style={{ display: "block", color: "#0f172a" }}>Order #SM-4081</strong>
-                  <span style={{ fontSize: "12.5px", color: "#64748b" }}>
-                    Customer: Harsha · 1x Casio FX-991CW Calculator
-                  </span>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <strong style={{ display: "block", color: "#4f46e5" }}>₹1250.00</strong>
-                  <span className="admin-stock-badge">Completed</span>
+            {/* Orders Statistics Cards */}
+            <div className="admin-orders-stats">
+              <div className="admin-order-stat-card placed">
+                <div className="admin-stat-icon">📦</div>
+                <div className="admin-stat-info">
+                  <span className="admin-stat-number">{orderStats.totalOrders || orders.length}</span>
+                  <span className="admin-stat-label">Total Placed</span>
                 </div>
               </div>
 
-              <div
-                style={{
-                  padding: "16px",
-                  background: "#f8fafc",
-                  borderRadius: "10px",
-                  border: "1px solid #e2e8f0",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <div>
-                  <strong style={{ display: "block", color: "#0f172a" }}>Order #SM-4082</strong>
-                  <span style={{ fontSize: "12.5px", color: "#64748b" }}>
-                    Customer: Prajwal · 1x Campus Waterproof Backpack
+              <div className="admin-order-stat-card pending">
+                <div className="admin-stat-icon">⏳</div>
+                <div className="admin-stat-info">
+                  <span className="admin-stat-number" style={{ color: "#d97706" }}>
+                    {orderStats.pendingOrders || orders.filter((o) => o.status === "Pending").length}
                   </span>
+                  <span className="admin-stat-label">Pending Approval</span>
                 </div>
-                <div style={{ textAlign: "right" }}>
-                  <strong style={{ display: "block", color: "#4f46e5" }}>₹899.00</strong>
-                  <span className="admin-stock-badge">Pickup Ready</span>
+              </div>
+
+              <div className="admin-order-stat-card ready">
+                <div className="admin-stat-icon">🏪</div>
+                <div className="admin-stat-info">
+                  <span className="admin-stat-number" style={{ color: "#7c3aed" }}>
+                    {orderStats.readyOrders || orders.filter((o) => o.status === "Ready for Pickup").length}
+                  </span>
+                  <span className="admin-stat-label">Ready for Pickup</span>
+                </div>
+              </div>
+
+              <div className="admin-order-stat-card revenue">
+                <div className="admin-stat-icon">💰</div>
+                <div className="admin-stat-info">
+                  <span className="admin-stat-number" style={{ color: "#059669" }}>
+                    ₹{orderStats.totalRevenue !== undefined
+                      ? orderStats.totalRevenue
+                      : orders
+                          .filter((o) => o.status !== "Cancelled")
+                          .reduce((s, o) => s + (o.totalAmount || 0), 0)}
+                  </span>
+                  <span className="admin-stat-label">Total Revenue</span>
                 </div>
               </div>
             </div>
+
+            {/* Filter and Search Bar */}
+            <div className="admin-order-filters-bar">
+              <div className="admin-order-filter-pills">
+                {["All", "Pending", "Confirmed", "Ready for Pickup", "Completed", "Cancelled"].map((status) => {
+                  const count =
+                    status === "All"
+                      ? orders.length
+                      : orders.filter((o) => o.status === status).length;
+                  return (
+                    <button
+                      key={status}
+                      type="button"
+                      className={`admin-filter-pill ${orderStatusFilter === status ? "active" : ""}`}
+                      onClick={() => setOrderStatusFilter(status)}
+                    >
+                      {status} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+
+              <input
+                type="text"
+                className="admin-order-search"
+                placeholder="Search by Order #, student name, USN..."
+                value={orderSearch}
+                onChange={(e) => setOrderSearch(e.target.value)}
+              />
+            </div>
+
+            {/* Order Cards List */}
+            {ordersLoading ? (
+              <div className="admin-empty-state">
+                <p>Loading campus store orders...</p>
+              </div>
+            ) : (() => {
+              const filteredOrders = orders.filter((order) => {
+                const matchesStatus =
+                  orderStatusFilter === "All" || order.status === orderStatusFilter;
+                const query = orderSearch.toLowerCase().trim();
+                const matchesQuery =
+                  !query ||
+                  (order.orderId && order.orderId.toLowerCase().includes(query)) ||
+                  (order.customerName && order.customerName.toLowerCase().includes(query)) ||
+                  (order.customerUsn && order.customerUsn.toLowerCase().includes(query)) ||
+                  (order.customerEmail && order.customerEmail.toLowerCase().includes(query));
+                return matchesStatus && matchesQuery;
+              });
+
+              if (filteredOrders.length === 0) {
+                return (
+                  <div className="admin-empty-state" style={{ background: "#ffffff", padding: "40px", borderRadius: "14px", border: "1px solid #e2e8f0" }}>
+                    <div style={{ fontSize: "36px", marginBottom: "8px" }}>📭</div>
+                    <h3 style={{ margin: "0 0 6px 0", color: "#0f172a" }}>No orders found</h3>
+                    <p style={{ color: "#64748b", fontSize: "13.5px" }}>
+                      {orderSearch || orderStatusFilter !== "All"
+                        ? "Try adjusting your filter or search query."
+                        : "Orders placed by students will appear here in real time."}
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  {filteredOrders.map((order) => {
+                    const statusClass = (order.status || "Pending").toLowerCase().replace(/\s+/g, "-");
+                    return (
+                      <div key={order._id || order.orderId} className="admin-order-card">
+                        {/* Header */}
+                        <div className="admin-order-card-header">
+                          <div className="admin-order-id-group">
+                            <span className="admin-order-id">Order #{order.orderId}</span>
+                            <span className="admin-order-time">
+                              {new Date(order.createdAt).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <span className={`status-badge ${statusClass}`}>
+                              {order.status === "Pending" && "Pending"}
+                              {order.status === "Confirmed" && "Confirmed"}
+                              {order.status === "Ready for Pickup" && "Ready for Pickup"}
+                              {order.status === "Completed" && "Completed"}
+                              {order.status === "Cancelled" && "Cancelled"}
+                            </span>
+
+                            {/* Status Quick Dropdown */}
+                            <select
+                              className="admin-status-dropdown"
+                              value={order.status}
+                              onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)}
+                            >
+                              <option value="Pending">Pending</option>
+                              <option value="Confirmed">Confirmed</option>
+                              <option value="Ready for Pickup">Ready for Pickup</option>
+                              <option value="Completed">Completed</option>
+                              <option value="Cancelled">Cancelled</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Customer & Delivery Grid */}
+                        <div className="admin-order-details-grid">
+                          <div className="admin-order-info-block">
+                            <strong>Student Customer</strong>
+                            <p style={{ fontWeight: "700" }}>{order.customerName || "Student"}</p>
+                            <p style={{ fontSize: "12.5px", color: "#64748b" }}>
+                              USN: <strong>{order.customerUsn || "N/A"}</strong>
+                            </p>
+                            <p style={{ fontSize: "12.5px", color: "#64748b" }}>
+                              Email: {order.customerEmail || "N/A"}
+                              {order.customerPhone ? ` · Phone: ${order.customerPhone}` : ""}
+                            </p>
+                          </div>
+
+                          <div className="admin-order-info-block">
+                            <strong>Campus Handover & Notes</strong>
+                            <p style={{ fontWeight: "600", color: "#0f172a" }}>
+                              📍 {order.deliveryLocation || "Campus Store Counter"}
+                            </p>
+                            {order.deliveryNotes ? (
+                              <p style={{ fontSize: "12.5px", color: "#475569", marginTop: "4px" }}>
+                                📝 Note: {order.deliveryNotes}
+                              </p>
+                            ) : (
+                              <p style={{ fontSize: "12px", color: "#94a3b8", fontStyle: "italic" }}>
+                                No special notes provided
+                              </p>
+                            )}
+                            <p style={{ fontSize: "12px", color: "#64748b", marginTop: "4px" }}>
+                              💳 {order.paymentMethod || "Campus Cash / UPI"}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Items List */}
+                        <div className="admin-order-items-list">
+                          {order.items &&
+                            order.items.map((item, idx) => (
+                              <div key={idx} className="admin-order-item-row">
+                                <div className="admin-order-item-left">
+                                  {item.image ? (
+                                    <img
+                                      src={item.image}
+                                      alt={item.title}
+                                      className="admin-order-item-img"
+                                    />
+                                  ) : (
+                                    <div
+                                      className="admin-order-item-img"
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        background: "#f1f5f9",
+                                        fontSize: "20px",
+                                      }}
+                                    >
+                                      🛍️
+                                    </div>
+                                  )}
+                                  <div>
+                                    <strong style={{ display: "block", color: "#0f172a", fontSize: "13.5px" }}>
+                                      {item.title}
+                                    </strong>
+                                    <span style={{ fontSize: "12px", color: "#64748b" }}>
+                                      {item.category || "General"} · Qty: {item.quantity || 1} · ₹{item.price} each
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <strong style={{ color: "#0f172a", fontSize: "14px" }}>
+                                  ₹{(Number(item.price) || 0) * (item.quantity || 1)}
+                                </strong>
+                              </div>
+                            ))}
+                        </div>
+
+                        {/* Footer & Actions */}
+                        <div className="admin-order-footer-row">
+                          <div className="admin-order-total-block">
+                            <span style={{ fontSize: "13px", color: "#64748b" }}>Order Total:</span>
+                            <span className="admin-order-total-price">₹{order.totalAmount}</span>
+                          </div>
+
+                          <div className="admin-order-actions-group">
+                            {order.status === "Pending" && (
+                              <button
+                                type="button"
+                                className="btn-status-confirm"
+                                onClick={() => handleUpdateOrderStatus(order._id, "Confirmed")}
+                              >
+                                ✓ Confirm Order
+                              </button>
+                            )}
+
+                            {(order.status === "Pending" || order.status === "Confirmed") && (
+                              <button
+                                type="button"
+                                className="btn-status-ready"
+                                onClick={() => handleUpdateOrderStatus(order._id, "Ready for Pickup")}
+                              >
+                                Ready for Pickup
+                              </button>
+                            )}
+
+                            {order.status === "Ready for Pickup" && (
+                              <button
+                                type="button"
+                                className="btn-status-complete"
+                                onClick={() => handleUpdateOrderStatus(order._id, "Completed")}
+                              >
+                                Mark Completed
+                              </button>
+                            )}
+
+                            {order.status !== "Cancelled" && order.status !== "Completed" && (
+                              <button
+                                type="button"
+                                className="btn-status-cancel"
+                                onClick={() => handleUpdateOrderStatus(order._id, "Cancelled")}
+                              >
+                                Cancel
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              className="admin-btn-action-delete"
+                              title="Delete Order"
+                              onClick={() => handleDeleteOrder(order._id, order.orderId)}
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         )}
 

@@ -2,6 +2,7 @@ export default function StatCard({
   title,
   value,
   icon: Icon,
+  emoji,
   trend,
   trendPositive = true,
   accentColor = "indigo",
@@ -9,29 +10,46 @@ export default function StatCard({
 }) {
   const colorMap = {
     indigo: {
-      bg: "rgba(99, 102, 241, 0.1)",
-      text: "#4f46e5",
-      border: "rgba(99, 102, 241, 0.2)",
+      bg: "#ede9fe",
+      text: "#6d28d9",
+      border: "#ddd6fe",
+      badgeBg: "#f5f3ff",
     },
     emerald: {
-      bg: "rgba(16, 185, 129, 0.1)",
+      bg: "#d1fae5",
       text: "#059669",
-      border: "rgba(16, 185, 129, 0.2)",
+      border: "#a7f3d0",
+      badgeBg: "#ecfdf5",
     },
     amber: {
-      bg: "rgba(245, 158, 11, 0.1)",
+      bg: "#fef3c7",
       text: "#d97706",
-      border: "rgba(245, 158, 11, 0.2)",
+      border: "#fde68a",
+      badgeBg: "#fffbeb",
     },
     rose: {
-      bg: "rgba(244, 63, 94, 0.1)",
+      bg: "#ffe4e6",
       text: "#e11d48",
-      border: "rgba(244, 63, 94, 0.2)",
+      border: "#fecdd3",
+      badgeBg: "#fff1f2",
     },
     sky: {
-      bg: "rgba(14, 165, 233, 0.1)",
+      bg: "#e0f2fe",
       text: "#0284c7",
-      border: "rgba(14, 165, 233, 0.2)",
+      border: "#bae6fd",
+      badgeBg: "#f0f9ff",
+    },
+    orange: {
+      bg: "#ffedd5",
+      text: "#ea580c",
+      border: "#fed7aa",
+      badgeBg: "#fff7ed",
+    },
+    purple: {
+      bg: "#f3e8ff",
+      text: "#9333ea",
+      border: "#e9d5ff",
+      badgeBg: "#faf5ff",
     },
   };
 
@@ -39,26 +57,28 @@ export default function StatCard({
 
   return (
     <div 
-      className={`modern-stat-card ${onClick ? "clickable" : ""}`}
+      className={`modern-stat-card warm-compact ${onClick ? "clickable" : ""}`}
       onClick={onClick}
     >
       <div className="stat-card-top">
-        <span className="stat-card-title">{title}</span>
         <div 
-          className="stat-card-icon-wrap"
+          className="stat-card-icon-wrap warm-pill"
           style={{ backgroundColor: current.bg, color: current.text }}
         >
-          <Icon size={20} />
+          {emoji ? <span className="stat-emoji">{emoji}</span> : <Icon size={18} />}
         </div>
-      </div>
-
-      <div className="stat-card-bottom">
-        <div className="stat-card-value">{value}</div>
         {trend && (
-          <div className={`stat-card-trend ${trendPositive ? "positive" : "neutral"}`}>
+          <div className={`stat-card-trend-badge ${trendPositive ? "positive" : "neutral"}`}>
             <span>{trend}</span>
           </div>
         )}
+      </div>
+
+      <div className="stat-card-bottom">
+        <div className="stat-card-value-box">
+          <span className="stat-card-value">{value}</span>
+          <span className="stat-card-title">{title}</span>
+        </div>
       </div>
     </div>
   );

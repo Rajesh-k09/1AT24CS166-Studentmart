@@ -610,15 +610,63 @@ export default function Dashboard({ role: propRole, initialTab = "dashboard" }) 
     });
   }, [filteredProducts, priceSort]);
 
-  // Categories list with counts
+  // Categories list with warm pastel styling & playful emojis
   const categoryList = [
-    { name: "Books", icon: BookOpen, color: "#4f46e5" },
-    { name: "Electronics", icon: Laptop, color: "#0ea5e9" },
-    { name: "Notes", icon: FileText, color: "#10b981" },
-    { name: "Furniture", icon: Armchair, color: "#f59e0b" },
-    { name: "Accessories", icon: Tag, color: "#8b5cf6" },
-    { name: "Sports", icon: Trophy, color: "#f43f5e" },
-    { name: "Other", icon: HelpCircle, color: "#64748b" },
+    { name: "Books", icon: BookOpen, emoji: "📚", color: "#4f46e5", pastelBg: "#e0f2fe", pastelText: "#0284c7" },
+    { name: "Electronics", icon: Laptop, emoji: "💻", color: "#0ea5e9", pastelBg: "#ede9fe", pastelText: "#7c3aed" },
+    { name: "Notes", icon: FileText, emoji: "📝", color: "#10b981", pastelBg: "#d1fae5", pastelText: "#059669" },
+    { name: "Furniture", icon: Armchair, emoji: "🪑", color: "#f59e0b", pastelBg: "#fef3c7", pastelText: "#d97706" },
+    { name: "Accessories", icon: Tag, emoji: "🎒", color: "#8b5cf6", pastelBg: "#ffe4e6", pastelText: "#e11d48" },
+    { name: "Sports", icon: Trophy, emoji: "🏆", color: "#f43f5e", pastelBg: "#ffedd5", pastelText: "#ea580c" },
+    { name: "Other", icon: HelpCircle, emoji: "📦", color: "#64748b", pastelBg: "#f1f5f9", pastelText: "#475569" },
+  ];
+
+  // Live Campus Activity Radar feed
+  const campusActivities = [
+    {
+      id: "act-1",
+      user: "Ananya K.",
+      dept: "CSE 3rd Sem",
+      action: "listed",
+      item: "VTU Engg Maths Sem 3",
+      price: "₹499",
+      time: "4 mins ago",
+      avatarBg: "#ffedd5",
+      avatarColor: "#ea580c",
+    },
+    {
+      id: "act-2",
+      user: "Prajwal M.",
+      dept: "ECE Dept",
+      action: "listed",
+      item: "Casio FX-991CW Calculator",
+      price: "₹850",
+      time: "12 mins ago",
+      avatarBg: "#ede9fe",
+      avatarColor: "#7c3aed",
+    },
+    {
+      id: "act-3",
+      user: "Sneha P.",
+      dept: "ISE 5th Sem",
+      action: "sold",
+      item: "Campus Laptop Backpack",
+      price: "₹899",
+      time: "28 mins ago",
+      avatarBg: "#d1fae5",
+      avatarColor: "#059669",
+    },
+    {
+      id: "act-4",
+      user: "Rahul S.",
+      dept: "Mech Dept",
+      action: "listed",
+      item: "Mini Drafter & Kit",
+      price: "₹450",
+      time: "1 hour ago",
+      avatarBg: "#e0f2fe",
+      avatarColor: "#0284c7",
+    },
   ];
 
   // Recommended / Trending Products
@@ -693,191 +741,271 @@ export default function Dashboard({ role: propRole, initialTab = "dashboard" }) 
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
-              {/* 3. Welcome Section Banner */}
-              <section className="dashboard-welcome-banner">
-                <div className="welcome-banner-decor-glow" />
-                <div className="welcome-banner-copy">
-                  <div className="welcome-campus-pill">
-                    <Sparkles size={14} />
-                    <span>Campus Marketplace · Verified Community</span>
-                  </div>
-
-                  <div className="welcome-title-row">
-                    <h2>Good morning, {displayName}! 👋</h2>
-                  </div>
-
-                  <p className="welcome-subtitle">
-                    Find great deals and discover items from your campus. Save money, recycle essentials, and meet verified students safely.
-                  </p>
-
-                  <div className="welcome-banner-actions">
-                    <button
-                      type="button"
-                      className="btn-banner-primary"
-                      onClick={() => setActiveTab("view-products")}
-                    >
-                      <ShoppingBag size={16} />
-                      <span>Explore Marketplace</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn-banner-secondary"
-                      onClick={() => setIsSellModalOpen(true)}
-                    >
-                      <PlusCircle size={16} />
-                      <span>Post Listing</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="welcome-banner-badge-preview">
-                  <span className="preview-stat-number">{products.length}</span>
-                  <span className="preview-stat-label">Available Items Near You</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#34d399", marginTop: 4 }}>
-                    <CheckCircle2 size={13} />
-                    <span>100% Student Verified</span>
-                  </div>
-                </div>
-              </section>
-
-              {/* 4. Statistics Cards */}
-              <section className="statistics-cards-grid">
+              {/* 1. TOP COMPACT METRICS STRIP (5 DATA TILES) */}
+              <section className="compact-metrics-strip">
                 <StatCard
                   title="Total Listings"
                   value={products.length}
                   icon={Package}
+                  emoji="📦"
                   trend="+8 this week"
                   trendPositive={true}
                   accentColor="indigo"
                   onClick={() => setActiveTab("view-products")}
                 />
                 <StatCard
-                  title="Items Sold"
-                  value={myListings.length > 0 ? "2" : "0"}
+                  title="Estimated Earnings"
+                  value={`₹${(myListings.length * 450).toLocaleString("en-IN")}`}
                   icon={Tag}
-                  trend="₹1,450 earned"
+                  emoji="💰"
+                  trend={myListings.length > 0 ? "From your listings" : "Start selling"}
                   trendPositive={true}
                   accentColor="emerald"
+                  onClick={() => setActiveTab("my-listings")}
+                />
+                <StatCard
+                  title="Listing Views"
+                  value={myListings.reduce((sum, l) => sum + (l.views || 38), 0) + 142}
+                  icon={Sparkles}
+                  emoji="👁️"
+                  trend="+32 today"
+                  trendPositive={true}
+                  accentColor="sky"
                   onClick={() => setActiveTab("my-listings")}
                 />
                 <StatCard
                   title="Active Orders"
                   value={customerOrders.length}
                   icon={Clock}
-                  trend={customerOrders.length > 0 ? "In Progress" : "No active orders"}
+                  emoji="🛍️"
+                  trend={customerOrders.length > 0 ? "In Handover" : "No active orders"}
                   trendPositive={customerOrders.length > 0}
                   accentColor="amber"
                   onClick={() => setActiveTab("orders")}
                 />
                 <StatCard
-                  title="Wishlist Items"
+                  title="Saved Wishlist"
                   value={wishlist.length}
                   icon={Heart}
-                  trend="Saved items"
+                  emoji="💖"
+                  trend={`${wishlist.length} saved`}
                   trendPositive={true}
                   accentColor="rose"
                   onClick={() => setActiveTab("wishlist")}
                 />
               </section>
 
-              {/* 6. Categories Section */}
-              <section className="dashboard-section">
-                <div className="section-header-row">
-                  <div className="section-header-title">
-                    <h3>Explore Categories</h3>
-                    <p>Browse student essentials by category</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="section-view-all-btn"
-                    onClick={() => {
-                      setSelectedCategory("All");
-                      setActiveTab("view-products");
-                    }}
-                  >
-                    <span>View all categories</span>
-                    <ArrowRight size={14} />
-                  </button>
-                </div>
+              {/* 2. MAIN 2-COLUMN CAMPUS DASHBOARD GRID */}
+              <div className="dashboard-two-col-layout">
+                {/* LEFT MAIN COLUMN: Marketplace & Categories */}
+                <div className="dashboard-main-col">
+                  {/* Warm Welcome Banner */}
+                  <div className="warm-welcome-hero">
+                    <div className="warm-hero-copy">
+                      <div className="warm-campus-tag">
+                        <Sparkles size={13} />
+                        <span>Campus Verified Hub · 0% Commission</span>
+                      </div>
 
-                <div className="categories-grid">
-                  {categoryList.map((cat) => {
-                    const count = products.filter((p) => p.category === cat.name).length;
-                    return (
-                      <CategoryCard
-                        key={cat.name}
-                        category={cat.name}
-                        icon={cat.icon}
-                        count={count}
-                        accentColor={cat.color}
-                        isSelected={selectedCategory === cat.name}
+                      <h2 className="warm-hero-title">Good morning, {displayName}! 👋</h2>
+
+                      <p className="warm-hero-desc">
+                        Find pre-loved textbooks, engineering kits, and gadgets right inside campus from verified peers.
+                      </p>
+
+                      <div className="warm-hero-actions">
+                        <button
+                          type="button"
+                          className="btn-warm-primary"
+                          onClick={() => setActiveTab("view-products")}
+                        >
+                          <ShoppingBag size={15} />
+                          <span>Browse Items</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="btn-warm-secondary"
+                          onClick={() => setIsSellModalOpen(true)}
+                        >
+                          <PlusCircle size={15} />
+                          <span>+ Sell Item</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="warm-hero-side-badge">
+                      <span className="side-badge-num">{products.length}</span>
+                      <span className="side-badge-label">Available Items</span>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 11, color: "#16a34a", marginTop: 4 }}>
+                        <CheckCircle2 size={12} />
+                        <span>100% Peer Verified</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Compact Categories Section */}
+                  <div className="dashboard-section compact-section">
+                    <div className="section-header-row">
+                      <div className="section-header-title">
+                        <h3>Explore by Category</h3>
+                        <p>Find student essentials across all departments</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="section-view-all-btn"
                         onClick={() => {
-                          setSelectedCategory(cat.name);
+                          setSelectedCategory("All");
                           setActiveTab("view-products");
                         }}
-                      />
-                    );
-                  })}
-                </div>
-              </section>
-
-              {/* 7. Recommended / Trending Products */}
-              <section className="dashboard-section">
-                <div className="section-header-row">
-                  <div className="section-header-title">
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <h3>Trending on Campus</h3>
-                      <span className="nav-item-badge rose">Hot Deals</span>
+                      >
+                        <span>View all</span>
+                        <ArrowRight size={13} />
+                      </button>
                     </div>
-                    <p>Highly requested textbooks and gear this exam week</p>
+
+                    <div className="categories-compact-scroll">
+                      {categoryList.map((cat) => {
+                        const count = products.filter((p) => p.category === cat.name).length;
+                        return (
+                          <CategoryCard
+                            key={cat.name}
+                            category={cat.name}
+                            icon={cat.icon}
+                            emoji={cat.emoji}
+                            count={count}
+                            pastelBg={cat.pastelBg}
+                            pastelText={cat.pastelText}
+                            isSelected={selectedCategory === cat.name}
+                            onClick={() => {
+                              setSelectedCategory(cat.name);
+                              setActiveTab("view-products");
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Trending on Campus Section */}
+                  <div className="dashboard-section compact-section">
+                    <div className="section-header-row">
+                      <div className="section-header-title">
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <h3>🔥 Trending on Campus</h3>
+                          <span className="nav-item-badge rose">Hot Deals</span>
+                        </div>
+                        <p>Most requested study gear and tech this week</p>
+                      </div>
+                    </div>
+
+                    <div className="compact-products-grid">
+                      {recommendedProducts.map((prod) => (
+                        <ProductCard
+                          key={prod.id || prod._id}
+                          product={prod}
+                          onAddToCart={handleAddToCart}
+                          onViewDetails={setSelectedProductForDetail}
+                          onToggleWishlist={handleToggleWishlist}
+                          isWishlisted={wishlist.some((w) => (w.id || w._id) === (prod.id || prod._id))}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Recently Added Listings */}
+                  <div className="dashboard-section compact-section">
+                    <div className="section-header-row">
+                      <div className="section-header-title">
+                        <h3>✨ Fresh Campus Listings</h3>
+                        <p>Newly listed by students for fast handover</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="section-view-all-btn"
+                        onClick={() => setActiveTab("view-products")}
+                      >
+                        <span>Browse all ({products.length})</span>
+                        <ArrowRight size={13} />
+                      </button>
+                    </div>
+
+                    <div className="compact-products-grid">
+                      {products.slice(0, 4).map((prod) => (
+                        <ProductCard
+                          key={prod.id || prod._id}
+                          product={prod}
+                          onAddToCart={handleAddToCart}
+                          onViewDetails={setSelectedProductForDetail}
+                          onToggleWishlist={handleToggleWishlist}
+                          isWishlisted={wishlist.some((w) => (w.id || w._id) === (prod.id || prod._id))}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                <div className="products-responsive-grid">
-                  {recommendedProducts.map((prod) => (
-                    <ProductCard
-                      key={prod.id || prod._id}
-                      product={prod}
-                      onAddToCart={handleAddToCart}
-                      onViewDetails={setSelectedProductForDetail}
-                      onToggleWishlist={handleToggleWishlist}
-                      isWishlisted={wishlist.some((w) => (w.id || w._id) === (prod.id || prod._id))}
-                    />
-                  ))}
-                </div>
-              </section>
+                {/* RIGHT SIDE COLUMN: Live Activity Radar & Pickup Desk */}
+                <div className="dashboard-side-col">
+                  {/* Campus Radar Card */}
+                  <div className="campus-radar-card">
+                    <div className="radar-header">
+                      <div className="radar-title-box">
+                        <span className="live-pulse-dot" />
+                        <h4 className="radar-title">Campus Activity Radar</h4>
+                      </div>
+                      <span className="radar-live-tag">Live</span>
+                    </div>
 
-              {/* 5. Recently Added Products */}
-              <section className="dashboard-section">
-                <div className="section-header-row">
-                  <div className="section-header-title">
-                    <h3>Recently Added Products</h3>
-                    <p>Fresh listings posted by students across faculties</p>
+                    <div className="activity-feed-list">
+                      {campusActivities.map((act) => (
+                        <div key={act.id} className="activity-feed-item">
+                          <div
+                            className="activity-icon-bubble"
+                            style={{ backgroundColor: act.avatarBg, color: act.avatarColor }}
+                          >
+                            {act.user.slice(0, 1)}
+                          </div>
+                          <div className="activity-item-details">
+                            <span className="activity-text-line">
+                              <strong>{act.user}</strong> ({act.dept}) {act.action}{" "}
+                              <strong>{act.item}</strong> for {act.price}
+                            </span>
+                            <span className="activity-time-line">{act.time}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    className="section-view-all-btn"
-                    onClick={() => setActiveTab("view-products")}
-                  >
-                    <span>Browse complete catalog ({products.length})</span>
-                    <ArrowRight size={14} />
-                  </button>
-                </div>
 
-                <div className="products-responsive-grid">
-                  {products.slice(0, 6).map((prod) => (
-                    <ProductCard
-                      key={prod.id || prod._id}
-                      product={prod}
-                      onAddToCart={handleAddToCart}
-                      onViewDetails={setSelectedProductForDetail}
-                      onToggleWishlist={handleToggleWishlist}
-                      isWishlisted={wishlist.some((w) => (w.id || w._id) === (prod.id || prod._id))}
-                    />
-                  ))}
+                  {/* Central Library Pickup Counter */}
+                  <div className="campus-counter-widget">
+                    <div className="counter-icon-wrap">
+                      <MapPin size={20} />
+                    </div>
+                    <div className="counter-info">
+                      <span className="counter-title">Central Library Pickup Desk #3</span>
+                      <span className="counter-hours">Open Today: 9:00 AM – 5:30 PM · Student ID Required</span>
+                    </div>
+                  </div>
+
+                  {/* Seller Fast Hub */}
+                  <div className="seller-fast-hub">
+                    <span className="seller-hub-title">⚡ Sell Fast on Campus</span>
+                    <p className="seller-hub-desc">
+                      Done with your semester books or calculator? List in under 60 seconds and find a buyer in your department.
+                    </p>
+                    <button
+                      type="button"
+                      className="seller-hub-btn"
+                      onClick={() => setIsSellModalOpen(true)}
+                    >
+                      <PlusCircle size={15} />
+                      <span>Post Student Listing</span>
+                    </button>
+                  </div>
                 </div>
-              </section>
+              </div>
             </>
           )}
 
@@ -918,7 +1046,7 @@ export default function Dashboard({ role: propRole, initialTab = "dashboard" }) 
                         className={`category-pill-filter-btn ${selectedCategory === cat.name ? "active" : ""}`}
                         onClick={() => setSelectedCategory(cat.name)}
                       >
-                        {cat.name} ({count})
+                        {cat.emoji ? `${cat.emoji} ` : ""}{cat.name} ({count})
                       </button>
                     );
                   })}

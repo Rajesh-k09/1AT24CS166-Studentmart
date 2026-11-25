@@ -1,33 +1,27 @@
 export default function CategoryCard({
   category,
   icon: Icon,
-  emoji,
   count,
   isSelected,
   onClick,
-  pastelBg = "#ede9fe",
-  pastelText = "#6d28d9",
+  accentColor = "#4f46e5",
 }) {
   return (
     <div
-      className={`warm-category-chip ${isSelected ? "selected" : ""}`}
+      className={`modern-category-card ${isSelected ? "selected" : ""}`}
       onClick={onClick}
-      style={{
-        "--chip-bg": pastelBg,
-        "--chip-text": pastelText,
-      }}
     >
       <div 
-        className="category-chip-bubble"
-        style={{ backgroundColor: pastelBg, color: pastelText }}
+        className="category-icon-bubble"
+        style={{ backgroundColor: `${accentColor}14`, color: accentColor }}
       >
-        {emoji ? <span className="category-emoji">{emoji}</span> : <Icon size={18} />}
+        <Icon size={24} />
       </div>
 
-      <div className="category-chip-meta">
-        <span className="category-chip-title">{category}</span>
+      <div className="category-text-wrap">
+        <h4 className="category-title">{category}</h4>
         {count !== undefined && (
-          <span className="category-chip-count">{count} items</span>
+          <span className="category-count">{count} {count === 1 ? "item" : "items"}</span>
         )}
       </div>
     </div>

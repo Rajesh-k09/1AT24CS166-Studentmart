@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, ShoppingBag, Eye, MapPin, Sparkles, Plus } from "lucide-react";
+import { Heart, ShoppingBag, Eye, MapPin, User, Sparkles } from "lucide-react";
 
 export default function ProductCard({
   product,
@@ -40,62 +40,30 @@ export default function ProductCard({
     }
   };
 
-  // Pastel styling by category
-  const getCategoryTheme = (cat) => {
-    switch ((cat || "").toLowerCase()) {
-      case "books":
-        return { bg: "#e0f2fe", text: "#0284c7" };
-      case "gadgets":
-      case "electronics":
-        return { bg: "#ede9fe", text: "#7c3aed" };
-      case "notes":
-      case "stationery":
-        return { bg: "#d1fae5", text: "#059669" };
-      case "furniture":
-        return { bg: "#fef3c7", text: "#d97706" };
-      case "accessories":
-      case "college bags":
-        return { bg: "#ffe4e6", text: "#e11d48" };
-      case "sports":
-        return { bg: "#ffedd5", text: "#ea580c" };
-      default:
-        return { bg: "#f3f4f6", text: "#4b5563" };
-    }
-  };
-
-  const catTheme = getCategoryTheme(category);
   const displayImage = imageError || !product.image ? getFallbackImage(category) : product.image;
-  const sellerInitial = (sellerName || "S").charAt(0).toUpperCase();
 
   return (
-    <div className="compact-product-card">
+    <div className="modern-product-card">
       {/* Card Image Banner */}
-      <div className="compact-card-media" onClick={() => onViewDetails && onViewDetails(product)}>
+      <div className="product-card-image-wrap">
         <img
           src={displayImage}
           alt={title}
           loading="lazy"
           onError={() => setImageError(true)}
-          className="compact-card-img"
+          className="product-card-img"
         />
 
         {/* Category Pill Tag */}
-        <span 
-          className="compact-category-tag"
-          style={{ backgroundColor: catTheme.bg, color: catTheme.text }}
-        >
-          {category}
-        </span>
+        <span className="product-category-pill">{category}</span>
 
-        {/* Condition Tag */}
-        <span className="compact-condition-tag">
-          {condition}
-        </span>
+        {/* Condition / Verified Tag */}
+        <span className="product-condition-pill">{condition}</span>
 
         {/* Wishlist Heart Button */}
         <button
           type="button"
-          className={`compact-wishlist-btn ${isWishlisted ? "active" : ""}`}
+          className={`product-wishlist-btn ${isWishlisted ? "active" : ""}`}
           onClick={(e) => {
             e.stopPropagation();
             onToggleWishlist && onToggleWishlist(product);
@@ -103,53 +71,61 @@ export default function ProductCard({
           title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
           aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
         >
-          <Heart size={15} fill={isWishlisted ? "#f43f5e" : "none"} color={isWishlisted ? "#f43f5e" : "#475569"} />
+          <Heart size={18} fill={isWishlisted ? "#f43f5e" : "none"} color={isWishlisted ? "#f43f5e" : "#ffffff"} />
         </button>
 
-        {/* Quick View Pill */}
-        <div className="compact-hover-pill">
-          <Eye size={13} />
-          <span>Quick View</span>
+        {/* Hover Quick Actions Overlay */}
+        <div className="product-hover-overlay">
+          <button
+            type="button"
+            className="quick-view-btn"
+            onClick={() => onViewDetails && onViewDetails(product)}
+          >
+            <Eye size={15} />
+            <span>Quick View</span>
+          </button>
         </div>
       </div>
 
       {/* Card Content Details */}
-      <div className="compact-card-content">
-        <div className="compact-location-line">
-          <MapPin size={12} className="loc-icon" />
-          <span className="loc-text">{location}</span>
+      <div className="product-card-body">
+        <div className="product-location-row">
+          <MapPin size={13} className="loc-pin" />
+          <span className="location-name">{location}</span>
         </div>
 
-        <h3 
-          className="compact-card-title" 
-          title={title}
-          onClick={() => onViewDetails && onViewDetails(product)}
-        >
+        <h3 className="product-card-title" title={title}>
           {title}
         </h3>
 
+        <p className="product-card-desc">
+          {desc}
+        </p>
+
         {showSellerInfo && (
-          <div className="compact-seller-chip">
-            <span className="seller-avatar-mini">{sellerInitial}</span>
-            <span className="seller-text">Listed by <strong>{sellerName}</strong></span>
+          <div className="product-seller-row">
+            <div className="seller-mini-avatar">
+              <User size={12} />
+            </div>
+            <span className="seller-label">Seller: <strong>{sellerName}</strong></span>
           </div>
         )}
 
         {/* Price & Action Row */}
-        <div className="compact-card-footer">
-          <div className="compact-price-wrap">
-            <span className="curr">₹</span>
-            <span className="amt">{price.toLocaleString("en-IN")}</span>
+        <div className="product-card-footer">
+          <div className="product-price-box">
+            <span className="currency-symbol">₹</span>
+            <span className="price-number">{price.toLocaleString("en-IN")}</span>
           </div>
 
           <button
             type="button"
-            className="compact-add-cart-btn"
+            className="product-add-cart-btn"
             onClick={() => onAddToCart && onAddToCart(product)}
             title="Add to Shopping Cart"
           >
-            <Plus size={15} />
-            <span>Add</span>
+            <ShoppingBag size={16} />
+            <span>Add to Cart</span>
           </button>
         </div>
       </div>

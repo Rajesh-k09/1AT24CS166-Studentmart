@@ -3,7 +3,7 @@
 :root {
   --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   
-  /* Modern Warm Campus Palette */
+  /* Modern Colors - Indigo & Slate */
   --primary-50: #eef2ff;
   --primary-100: #e0e7ff;
   --primary-200: #c7d2fe;
@@ -15,65 +15,49 @@
   --primary-800: #3730a3;
   --primary-900: #312e81;
 
-  --slate-50: #faf8f5;
-  --slate-100: #f4efe6;
-  --slate-200: #eee7dc;
-  --slate-300: #ded3c3;
-  --slate-400: #9e9180;
-  --slate-500: #6d6457;
-  --slate-600: #4e473e;
-  --slate-700: #3a342c;
-  --slate-800: #24201a;
-  --slate-900: #171410;
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
 
   --emerald-500: #10b981;
   --amber-500: #f59e0b;
   --rose-500: #f43f5e;
   --sky-500: #0ea5e9;
-  --orange-500: #f97316;
-  --purple-500: #8b5cf6;
 
-  /* Soft Pastel Colors for Friendly Campus Style */
-  --pastel-blue-bg: #e0f2fe;
-  --pastel-blue-text: #0284c7;
-  --pastel-purple-bg: #ede9fe;
-  --pastel-purple-text: #7c3aed;
-  --pastel-green-bg: #d1fae5;
-  --pastel-green-text: #059669;
-  --pastel-amber-bg: #fef3c7;
-  --pastel-amber-text: #d97706;
-  --pastel-rose-bg: #ffe4e6;
-  --pastel-rose-text: #e11d48;
-  --pastel-orange-bg: #ffedd5;
-  --pastel-orange-text: #ea580c;
-
-  /* Surfaces & Backgrounds (Warm Ivory & Cream) */
-  --bg-body: #faf8f5;
+  /* Surfaces & Backgrounds */
+  --bg-body: #f8fafc;
   --bg-card: #ffffff;
   --bg-sidebar: #ffffff;
-  --border-subtle: #f6f2ec;
-  --border-light: #eee7dc;
-  --border-hover: #ded3c3;
+  --border-subtle: #f1f5f9;
+  --border-light: #e2e8f0;
+  --border-hover: #cbd5e1;
 
   /* Typography */
-  --text-main: #1e1b18;
-  --text-muted: #6d6457;
-  --text-subtle: #9e9180;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
 
-  /* Shadows - Soft Warm Elevation */
-  --shadow-xs: 0 1px 2px 0 rgba(40, 30, 20, 0.04);
-  --shadow-sm: 0 2px 6px -1px rgba(70, 50, 30, 0.06), 0 1px 2px -1px rgba(70, 50, 30, 0.03);
-  --shadow-md: 0 6px 16px -2px rgba(80, 55, 35, 0.07), 0 2px 4px -2px rgba(80, 55, 35, 0.03);
-  --shadow-lg: 0 12px 28px -4px rgba(90, 60, 40, 0.09), 0 4px 8px -4px rgba(90, 60, 40, 0.04);
-  --shadow-xl: 0 20px 36px -6px rgba(90, 60, 40, 0.11), 0 8px 12px -6px rgba(90, 60, 40, 0.04);
-  --shadow-warm-card: 0 4px 18px rgba(120, 80, 40, 0.06);
+  /* Shadows - Linear/Apple style layered soft elevation */
+  --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.07), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
+  --shadow-glass: 0 8px 32px 0 rgba(99, 102, 241, 0.12);
 
-  /* Radii - Rounded & Friendly */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-2xl: 26px;
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
   --radius-full: 9999px;
 
   /* Transitions */
@@ -107,11 +91,11 @@ html, body, #root {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #ded3c3;
+  background: #cbd5e1;
   border-radius: var(--radius-full);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #9e9180;
+  background: #94a3b8;
 }
 
 button {
@@ -148,9 +132,4 @@ a {
 @keyframes pulseGlow {
   0%, 100% { opacity: 0.6; transform: scale(1); }
   50% { opacity: 0.9; transform: scale(1.04); }
-}
-
-@keyframes bounceSlight {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
 }
